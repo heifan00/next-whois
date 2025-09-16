@@ -41,7 +41,7 @@ type InterpolationValues = Record<string, string | number>;
 
 export function useTranslation() {
   const router = useRouter();
-  const locale = (router.locale || "en") as Locale;
+  const locale = (router.locale || "zh") as Locale; // Next.js i18n 会自动处理 locale，但保留中文作为默认值
 
   function t(key: TranslationKey, values?: InterpolationValues): string {
     const getValue = (

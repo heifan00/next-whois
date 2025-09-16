@@ -4,14 +4,13 @@ import setupPWA from 'next-pwa';
 
 const nextConfig = {
   reactStrictMode: true,
-  output: 'export', // 启用静态导出
-  trailingSlash: true, // 为静态导出添加尾部斜杠
+  // 移除静态导出配置，使用服务端渲染模式
   images: {
-    unoptimized: true, // 静态导出时禁用图片优化
+    domains: [], // 可以添加允许的图片域名
   },
   i18n: {
     locales: ['en', 'zh', 'zh-tw', 'de', 'ru', 'ja', 'fr', 'ko'],
-    defaultLocale: 'zh',
+    defaultLocale: 'zh', // 设置默认语言为中文
   },
 };
 
