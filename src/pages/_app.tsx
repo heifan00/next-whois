@@ -33,7 +33,7 @@ export default function App({Component, pageProps}: AppProps) {
                 <meta name="keywords" content={siteKeywords}/>
                 <meta name="viewport" content="width=device-width, initial-scale=1"/>
                 <script defer src="https://umami.java.li/script.js"
-                        data-website-id="99c74aa9-d7e1-40e2-9768-f856db5a06ef"></script>
+                        data-website-id="e562da13-b866-4118-b973-ef9f03873a6a"></script>
             </Head>
             <Toaster/>
             <ThemeProvider
