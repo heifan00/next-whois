@@ -1,14 +1,7 @@
 import { useRouter } from "next/router";
 import en from "../../locales/en.json";
 import zh from "../../locales/zh.json";
-import zhTW from "../../locales/zh-tw.json";
-import de from "../../locales/de.json";
-import ru from "../../locales/ru.json";
-import ja from "../../locales/ja.json";
-import fr from "../../locales/fr.json";
-import ko from "../../locales/ko.json";
-
-const translations = { en, zh, "zh-tw": zhTW, de, ru, ja, fr, ko };
+const translations = { en, zh };
 
 export type Locale = keyof typeof translations;
 
@@ -45,15 +38,7 @@ export function useTranslation() {
 
   function t(key: TranslationKey, values?: InterpolationValues): string {
     const getValue = (
-      obj:
-        | typeof en
-        | typeof zh
-        | typeof zhTW
-        | typeof de
-        | typeof ru
-        | typeof ja
-        | typeof fr
-        | typeof ko,
+      obj: typeof en | typeof zh,
       path: string[],
     ): string => {
       return path.reduce((acc, key) => {

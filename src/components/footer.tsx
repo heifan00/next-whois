@@ -5,14 +5,21 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   RiGithubFill,
-  RiHeartFill,
   RiCodeFill,
-  RiGlobalLine,
-  RiMailFill,
   RiExternalLinkFill,
+  RiLinksLine,
+  RiShieldKeyholeLine,
+  RiGlobalLine,
 } from "@remixicon/react";
 import { cn } from "@/lib/utils";
 import { VERSION } from "@/lib/env";
+
+const friendlyLinks = [
+  { name: "nazhumi.com", href: "https://www.nazhumi.com" },
+  { name: "rdap.org", href: "https://rdap.org" },
+  { name: "IANA", href: "https://www.iana.org" },
+  { name: "InterNIC", href: "https://www.internic.net" },
+];
 
 export function Footer() {
   const currentYear = new Date().getFullYear();
@@ -20,107 +27,108 @@ export function Footer() {
     <footer className="w-full mt-16 mb-8">
       <div className="max-w-4xl mx-auto px-4">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, ease: "easeOut" }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
           className={cn(
-            "relative rounded-2xl border border-dashed border-muted/50",
-            "bg-secondary/25 backdrop-blur-sm p-6",
-            "hover:border-solid hover:bg-secondary/40 transition-all duration-300"
+            "relative rounded-2xl border border-muted/60",
+            "bg-secondary/20 backdrop-blur-sm p-6 md:p-8",
+            "hover:bg-secondary/30 transition-colors duration-300",
           )}
         >
-          {/* 背景装饰 */}
           <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none" />
-          
-          <div className="relative z-10 flex flex-col items-center justify-center space-y-4">
-            {/* 主要内容区域 - 居中布局 */}
-            <motion.div
-              className="flex flex-col items-center gap-3 text-center"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-            >
-              {/* Logo 和品牌信息 */}
+
+          <div className="relative z-10 grid grid-cols-1 md:grid-cols-4 gap-6 items-start">
+            <div className="md:col-span-2">
               <div className="flex items-center gap-3">
-                <motion.div
+                <div
                   className={cn(
-                    "w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-accent/20",
-                    "border-2 border-dashed border-primary/30 grid place-items-center",
-                    "hover:border-solid transition-all duration-300"
+                    "w-9 h-9 rounded-full bg-gradient-to-br from-primary/20 to-accent/20",
+                    "border border-muted/60 grid place-items-center",
                   )}
-                  whileHover={{ scale: 1.1, rotate: 5 }}
-                  transition={{ type: "spring", stiffness: 400, damping: 17 }}
                 >
                   <RiCodeFill className="w-4 h-4 text-primary" />
-                </motion.div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-foreground text-lg">94.cx WHOIS</h3>
-                  <span className="text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-full border border-dashed border-muted/50">
-                    v{VERSION}
+                </div>
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-foreground text-base">
+                      94.cx WHOIS
+                    </span>
+                    <span className="text-[11px] text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-full border border-muted/60">
+                      v{VERSION}
+                    </span>
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    Fast domain, IP, and ASN lookup
                   </span>
                 </div>
               </div>
-              
-              {/* 描述文字 */}
-              <p className="text-sm text-muted-foreground max-w-md leading-relaxed">
-                轻量级且美观的 Whois 查询工具
-              </p>
-            </motion.div>
 
-            {/* 分割线 */}
-            <motion.div 
-              className="w-24 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent"
-              initial={{ opacity: 0, scaleX: 0 }}
-              animate={{ opacity: 1, scaleX: 1 }}
-              transition={{ duration: 0.8, delay: 0.4 }}
-            />
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <RiGlobalLine className="w-3.5 h-3.5" />
+                  Domain / IP / ASN
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <RiShieldKeyholeLine className="w-3.5 h-3.5" />
+                  RDAP + WHOIS
+                </div>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <RiLinksLine className="w-3.5 h-3.5" />
+                  Pricing insights
+                </div>
+              </div>
+            </div>
 
-            {/* 底部信息 - 居中布局 */}
-            <motion.div
-              className="flex flex-col items-center gap-3 text-center"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.6, delay: 0.6 }}
-            >
-              {/* 项目信息 */}
-              <div className="flex flex-wrap items-center justify-center gap-3 text-xs">
-                <motion.span 
-                  className="px-3 py-1.5 rounded-full border border-dashed border-muted/50 bg-background/50 hover:border-solid hover:bg-background/80 transition-all duration-300"
-                  whileHover={{ scale: 1.05 }}
+            <div className="flex flex-col gap-2 text-sm">
+              <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                Links
+              </span>
+              <div className="flex flex-col gap-1.5">
+                <Link
+                  href="https://github.com/zmh-program/next-whois"
+                  target="_blank"
+                  className="inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-colors"
                 >
-                  <a 
-                    href="https://github.com/zmh-program/next-whois" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-primary hover:text-primary/80 transition-colors duration-300 flex items-center gap-1.5"
-                  >
-                    <RiGithubFill className="w-3.5 h-3.5" />
-                    基于 Next Whois
-                    <RiExternalLinkFill className="w-3 h-3 opacity-60" />
-                  </a>
-                </motion.span>
-                
-                <span className="text-muted-foreground/40">•</span>
-                
-                <motion.span 
-                  className="flex items-center gap-1.5 text-muted-foreground/80"
-                  whileHover={{ scale: 1.05 }}
+                  <RiGithubFill className="w-4 h-4" />
+                  Open Source
+                  <RiExternalLinkFill className="w-3 h-3 opacity-70" />
+                </Link>
+                <Link
+                  href="https://nextjs.org"
+                  target="_blank"
+                  className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  感谢开源
-                  <motion.div
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  Powered by Next.js
+                  <RiExternalLinkFill className="w-3 h-3 opacity-70" />
+                </Link>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2 text-sm md:items-end">
+              <span className="text-xs uppercase tracking-wide text-muted-foreground">
+                友情链接
+              </span>
+              <div className="flex flex-col gap-1.5 md:text-right">
+                {friendlyLinks.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    target="_blank"
+                    className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors md:justify-end"
                   >
-                    <RiHeartFill className="w-3.5 h-3.5 text-red-500/80" />
-                  </motion.div>
-                </motion.span>
+                    {link.name}
+                    <RiExternalLinkFill className="w-3 h-3 opacity-70" />
+                  </Link>
+                ))}
               </div>
-              
-              {/* 版权信息 */}
-              <div className="text-xs text-muted-foreground/60">
-                © {currentYear} • Made with passion
-              </div>
-            </motion.div>
+            </div>
+          </div>
+
+          <div className="relative z-10 mt-6 pt-4 border-t border-muted/40 flex flex-col sm:flex-row items-start sm:items-center gap-2 text-xs text-muted-foreground">
+            <span>© {currentYear} 94.cx</span>
+            <span className="hidden sm:inline">•</span>
+            <span>Data source: nazhumi.com</span>
           </div>
         </motion.div>
       </div>

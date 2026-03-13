@@ -64,6 +64,23 @@ function isASNumber(query: string): boolean {
   return /^AS\d+$/i.test(query) || /^\d+$/.test(query);
 }
 
+async function lookupNicLiRdap(domainToQuery: string): Promise<any> {
+  const url = `https://rdap.nic.li/domain/${encodeURIComponent(domainToQuery)}`;
+  const res = await fetch(url, {
+    method: "GET",
+    headers: {
+      accept: "application/rdap+json,application/json;q=0.9,*/*;q=0.8",
+    },
+  });
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`NIC.LI RDAP error (${res.status}): ${body || res.statusText}`);
+  }
+
+  return await res.json();
+}
+
 export async function lookupRdap(query: string): Promise<any> {
   const cleanQuery = query.trim().toLowerCase();
 
@@ -74,6 +91,12 @@ export async function lookupRdap(query: string): Promise<any> {
     return await autnum(parseInt(asNumber));
   } else {
     const domainToQuery = extractDomain(cleanQuery) || cleanQuery;
+    // node-rdap bootstrap does not reliably cover all ccTLDs (e.g. .li / .ch).
+    // For those, query the authoritative RDAP service directly.
+    if (domainToQuery.endsWith(".li") || domainToQuery.endsWith(".ch")) {
+      return await lookupNicLiRdap(domainToQuery);
+    }
+
     return await domain(domainToQuery);
   }
 }

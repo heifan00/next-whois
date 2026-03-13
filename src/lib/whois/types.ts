@@ -1,5 +1,10 @@
 import { DomainPricing } from "../pricing/client";
 
+export type DomainPricingSummary = {
+  register: DomainPricing[];
+  renew: DomainPricing[];
+};
+
 export type WhoisResult = {
   status: boolean;
   time: number;
@@ -7,6 +12,8 @@ export type WhoisResult = {
   source?: "rdap" | "whois";
   result?: WhoisAnalyzeResult;
   error?: string;
+  available?: boolean;
+  pricing?: DomainPricingSummary;
 };
 
 export type WhoisAnalyzeResult = {

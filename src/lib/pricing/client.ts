@@ -43,16 +43,38 @@ const defaultDomainPricing: DomainPricing = {
   externalLink: "",
 };
 
-export async function getDomainPricing(
+function normalizeTld(domain: string): string {
+  const raw = domain.trim().toLowerCase();
+  const dotIndex = raw.lastIndexOf(".");
+  const tld =
+    dotIndex >= 0 ? raw.substring(dotIndex + 1) : raw.replace("www.", "");
+  return tld.replace(/^\./, "").trim();
+}
+
+function toDomainPricing(
+  registrar: NazhumiRegistrar,
   domain: string,
   type: NazhumiOrder,
-): Promise<DomainPricing | null> {
+): DomainPricing {
+  return {
+    ...registrar,
+    isPremium:
+      typeof registrar.new === "number" &&
+      registrar.new > 100 &&
+      ["usd", "eur", "cad"].includes(registrar.currency.toLowerCase()),
+    externalLink: `https://www.nazhumi.com/domain/${domain}/${type}`,
+  };
+}
+
+export async function getDomainPricingList(
+  domain: string,
+  type: NazhumiOrder,
+  limit = 5,
+): Promise<DomainPricing[]> {
   try {
-    const tld = domain
-      .substring(domain.lastIndexOf(".") + 1)
-      .replace("www.", "")
-      .toLowerCase()
-      .trim();
+    const tld = normalizeTld(domain);
+    if (!tld) return [];
+
     const url = `${NAZHUMI_API_URL}?domain=${encodeURIComponent(tld)}&order=${type}`;
     const response = await fetch(url, {
       headers: {
@@ -62,23 +84,23 @@ export async function getDomainPricing(
 
     if (!response.ok) {
       console.error(`Nazhumi API error: ${response.statusText}`);
-      return null;
+      return [];
     }
 
     const data: NazhumiResponse = await response.json().then((res) => res.data);
-    const registrar =
-      data.price.length > 0 ? data.price[0] : { ...defaultDomainPricing };
+    const list = Array.isArray(data?.price) ? data.price : [];
 
-    return {
-      ...registrar,
-      isPremium:
-        typeof registrar.new === "number" &&
-        registrar.new > 100 &&
-        ["usd", "eur", "cad"].includes(registrar.currency.toLowerCase()),
-      externalLink: `https://www.nazhumi.com/domain/${domain}/${type}`,
-    };
+    return list.slice(0, limit).map((item) => toDomainPricing(item, domain, type));
   } catch (error) {
-    console.error("Error fetching domain pricing:", error);
-    return null;
+    console.error("Error fetching domain pricing list:", error);
+    return [];
   }
+}
+
+export async function getDomainPricing(
+  domain: string,
+  type: NazhumiOrder,
+): Promise<DomainPricing | null> {
+  const list = await getDomainPricingList(domain, type, 1);
+  return list.length > 0 ? list[0] : null;
 }

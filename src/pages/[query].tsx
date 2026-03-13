@@ -49,6 +49,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { WhoisAnalyzeResult, WhoisResult } from "@/lib/whois/types";
+import { DomainPricing } from "@/lib/pricing/client";
 import Icon from "@/components/icon";
 import { useImageCapture } from "@/lib/image";
 import ErrorArea from "@/components/items/error-area";
@@ -403,7 +404,151 @@ const ResultComp = React.forwardRef<HTMLDivElement, Props>(
     const captureObject = React.useRef<HTMLDivElement>(null);
     const capture = useImageCapture(captureObject);
 
-    const { status, result, error, time } = data;
+    const { status, result, error, time, available, pricing } = data;
+    const [priceCurrency, setPriceCurrency] = React.useState<
+      "original" | "cny"
+    >("original");
+    const [fxRates, setFxRates] = React.useState<{
+      base: string;
+      rates: Record<string, number>;
+    } | null>(null);
+
+    const isDomainAvailableError = (err?: string): boolean => {
+      if (!err) return false;
+      const msg = err.toLowerCase();
+      return (
+        msg.includes("domain or tld not found") ||
+        (msg.includes("no match") && msg.includes("domain")) ||
+        (msg.includes("no entries found") && msg.includes("domain")) ||
+        msg.includes("status: available") ||
+        msg.includes("available for registration")
+      );
+    };
+    const isAvailable = available || isDomainAvailableError(error);
+    const hasPricing =
+      (pricing?.register?.length || 0) > 0 || (pricing?.renew?.length || 0) > 0;
+
+    useEffect(() => {
+      if (priceCurrency !== "cny" || fxRates) return;
+      fetch("/api/rates")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data && data.rates) {
+            setFxRates({
+              base: String(data.base || "USD").toUpperCase(),
+              rates: data.rates as Record<string, number>,
+            });
+          }
+        })
+        .catch((err) => {
+          console.error("Failed to fetch exchange rates:", err);
+        });
+    }, [priceCurrency, fxRates]);
+
+    const toCny = (amount: number, currency: string) => {
+      const upper = currency.trim().toUpperCase();
+      if (upper === "CNY" || upper === "RMB") return amount;
+      if (!fxRates?.rates) return null;
+      const base = (fxRates.base || "USD").toUpperCase();
+      const rates = fxRates.rates;
+      const to = "CNY";
+
+      if (upper === base) {
+        const toRate = rates[to];
+        return typeof toRate === "number" ? amount * toRate : null;
+      }
+
+      const fromRate = rates[upper];
+      if (typeof fromRate !== "number") return null;
+
+      if (to === base) {
+        return amount / fromRate;
+      }
+
+      const toRate = rates[to];
+      if (typeof toRate !== "number") return null;
+
+      return (amount / fromRate) * toRate;
+    };
+
+    const formatPrice = (amount: number | string, currency: string) => {
+      if (typeof amount !== "number") {
+        return String(amount);
+      }
+      if (priceCurrency === "cny") {
+        const converted = toCny(amount, currency);
+        if (converted === null) return `${amount} ${currency.toUpperCase()}`;
+        return `${converted.toFixed(2)} CNY`;
+      }
+      return `${amount} ${currency.toUpperCase()}`;
+    };
+
+    const renderCurrencyToggle = () => (
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-6 px-2 text-xs"
+        onClick={() =>
+          setPriceCurrency((prev) => (prev === "original" ? "cny" : "original"))
+        }
+        tapEnabled
+      >
+        {priceCurrency === "original"
+          ? t("price_currency_cny")
+          : t("price_currency_original")}
+      </Button>
+    );
+
+    const renderPricingList = (
+      title: string,
+      items: DomainPricing[] | undefined,
+      priceKey: "new" | "renew",
+    ) => {
+      const list = (items || []).filter(
+        (item) => typeof item[priceKey] === "number" && item[priceKey] >= 0,
+      );
+      if (list.length === 0) return null;
+
+      return (
+        <div className="w-full rounded-md border bg-background/60 p-2.5">
+          <div className="text-xs font-medium text-secondary mb-2">
+            {title}
+          </div>
+          <div className="flex flex-col space-y-1">
+            {list.map((item) => (
+              item.registrarweb ? (
+                <Link
+                  key={`${item.registrar}-${priceKey}`}
+                  href={item.registrarweb}
+                  target="_blank"
+                  className="flex items-center justify-between text-xs rounded px-1.5 py-1 hover:bg-muted/60 transition-colors"
+                >
+                  <div className="inline-flex items-center text-primary">
+                    <span>{item.registrarname || item.registrar}</span>
+                    <RiExternalLinkLine className="w-3 h-3 ml-1 text-muted-foreground" />
+                  </div>
+                  <span className="text-secondary">
+                    {formatPrice(item[priceKey] as number, item.currency || "")}
+                  </span>
+                </Link>
+              ) : (
+                <div
+                  key={`${item.registrar}-${priceKey}`}
+                  className="flex items-center justify-between text-xs rounded px-1.5 py-1"
+                >
+                  <div className="inline-flex items-center text-primary">
+                    <span>{item.registrarname || item.registrar}</span>
+                  </div>
+                  <span className="text-secondary">
+                    {formatPrice(item[priceKey] as number, item.currency || "")}
+                  </span>
+                </div>
+              )
+            ))}
+          </div>
+        </div>
+      );
+    };
 
     const current = getWindowHref();
 
@@ -445,8 +590,10 @@ const ResultComp = React.forwardRef<HTMLDivElement, Props>(
                   )}
                 >
                   {t("register_price")}
-                  {result.registerPrice.new}{" "}
-                  {result.registerPrice.currency.toUpperCase()}
+                  {formatPrice(
+                    result.registerPrice.new as number,
+                    result.registerPrice.currency,
+                  )}
                 </span>
               </Link>
             )}
@@ -464,10 +611,16 @@ const ResultComp = React.forwardRef<HTMLDivElement, Props>(
                   }
                 >
                   {t("renew_price")}
-                  {result.renewPrice.renew}{" "}
-                  {result.renewPrice.currency.toUpperCase()}
+                  {formatPrice(
+                    result.renewPrice.renew as number,
+                    result.renewPrice.currency,
+                  )}
                 </span>
               </Link>
+            )}
+
+            {(result?.registerPrice || result?.renewPrice || isAvailable) && (
+              <div className="ml-1">{renderCurrencyToggle()}</div>
             )}
 
             <div className={`flex-grow`} />
@@ -546,7 +699,7 @@ const ResultComp = React.forwardRef<HTMLDivElement, Props>(
                   {/* twitter */}
                   <Link
                     href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(
-                      `Whois Lookup Result: ${target} - ${status ? "Success" : "Failed"}`,
+                      `Whois Lookup Result: ${target} - ${status || isAvailable ? "Success" : "Failed"}`,
                     )}&url=${encodeURIComponent(current)}`}
                     target={`_blank`}
                   >
@@ -644,7 +797,7 @@ const ResultComp = React.forwardRef<HTMLDivElement, Props>(
                 <div
                   className={cn(
                     "w-2 h-2 shrink-0 rounded-full mr-1",
-                    status ? "bg-green-500" : "bg-red-500",
+                    status || isAvailable ? "bg-green-500" : "bg-red-500",
                   )}
                 />
 
@@ -666,7 +819,51 @@ const ResultComp = React.forwardRef<HTMLDivElement, Props>(
             </CardTitle>
             <CardContent className={`w-full p-0`}>
               {!status ? (
-                <ErrorArea error={error} />
+                isAvailable ? (
+                  <div className="relative flex flex-col items-center w-full h-fit mt-2 p-3 border border-emerald-500/70 rounded-md text-emerald-700 dark:text-emerald-300 bg-emerald-50/60 dark:bg-emerald-950/20">
+                    <div className="text-sm inline-flex flex-row items-center font-medium">
+                      <RiLinksLine className="w-3.5 h-3.5 mr-1.5" />
+                      {t("domain_available_title")}
+                    </div>
+                    <p className="text-xs sm:text-sm mt-2 text-center max-w-md">
+                      {t("domain_available_description")}
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => copy(target)}
+                      tapEnabled
+                    >
+                      <RiFileCopyLine className="w-3.5 h-3.5 mr-1.5" />
+                      {t("copy_domain")}
+                    </Button>
+                    {hasPricing && (
+                      <div className="mt-3 w-full max-w-lg">
+                        <div className="flex justify-end mb-2">
+                          {renderCurrencyToggle()}
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {renderPricingList(
+                            t("cheapest_register"),
+                            pricing?.register,
+                            "new",
+                          )}
+                          {renderPricingList(
+                            t("cheapest_renew"),
+                            pricing?.renew,
+                            "renew",
+                          )}
+                        </div>
+                        <div className="mt-1 text-right text-[10px] text-muted-foreground/70">
+                          data: nazhumi.com
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <ErrorArea error={error} />
+                )
               ) : (
                 <div className={`flex flex-col h-fit w-full mt-2`}>
                   <ResultTable result={result} target={target} />

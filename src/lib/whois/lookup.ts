@@ -1,15 +1,80 @@
 import { MAX_WHOIS_FOLLOW } from "@/lib/env";
-import { WhoisResult } from "@/lib/whois/types";
+import { DomainPricingSummary, WhoisResult } from "@/lib/whois/types";
 import { getJsonRedisValue, setJsonRedisValue } from "@/lib/server/redis";
 import { analyzeWhois } from "@/lib/whois/common_parser";
 import { extractDomain } from "@/lib/utils";
 import { lookupRdap, convertRdapToWhoisResult } from "@/lib/whois/rdap_client";
 import whois from "whois-raw";
+import { getDomainPricingList } from "@/lib/pricing/client";
+
+function isDomainQuery(query: string): boolean {
+  return !!extractDomain(query);
+}
+
+function isRdapNotFoundError(err: unknown): boolean {
+  if (!err) return false;
+  const message = (
+    err instanceof Error ? err.message : String(err ?? "")
+  ).toLowerCase();
+  return (
+    message.includes("rdap error (404)") ||
+    message.includes("404") ||
+    message.includes("not found") ||
+    message.includes("no entries found")
+  );
+}
+
+function isWhoisAvailableResponse(data: string): boolean {
+  const msg = data.toLowerCase();
+  return (
+    msg.includes("domain or tld not found") ||
+    (msg.includes("no match") && msg.includes("domain")) ||
+    (msg.includes("no entries found") && msg.includes("domain")) ||
+    msg.includes("status: available") ||
+    msg.includes("available for registration")
+  );
+}
+
+async function getAvailabilityPricing(
+  domain: string,
+): Promise<DomainPricingSummary> {
+  const [register, renew] = await Promise.all([
+    getDomainPricingList(domain, "new"),
+    getDomainPricingList(domain, "renew"),
+  ]);
+  return { register, renew };
+}
+
+function buildAvailableResult(
+  domain: string,
+  startTime: number,
+  pricing?: DomainPricingSummary,
+): WhoisResult {
+  return {
+    time: (performance.now() - startTime) / 1000,
+    status: false,
+    cached: false,
+    available: true,
+    pricing,
+    error: "Domain is available for registration",
+  };
+}
 
 function getLookupOptions(domain: string) {
   const isDomain = !!extractDomain(domain);
+  const lower = domain.trim().toLowerCase();
+
+  // Some ccTLDs are not covered by the underlying whois server map.
+  // Provide explicit servers to ensure lookup works.
+  const server =
+    lower.endsWith(".li") || lower === "nic.li"
+      ? "whois.nic.li"
+      : lower.endsWith(".ch") || lower === "nic.ch"
+        ? "whois.nic.ch"
+        : undefined;
   return {
     follow: isDomain ? MAX_WHOIS_FOLLOW : 0,
+    ...(server ? { server } : {}),
   };
 }
 
@@ -45,7 +110,7 @@ export async function lookupWhoisWithCache(
   }
 
   const result = await lookupWhois(domain);
-  if (result.status) {
+  if (result.status || result.available) {
     await setJsonRedisValue<WhoisResult>(key, result);
   }
 
@@ -70,6 +135,12 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
       result,
     };
   } catch (rdapError: unknown) {
+    const isDomain = isDomainQuery(domain);
+    if (isDomain && isRdapNotFoundError(rdapError)) {
+      const pricing = await getAvailabilityPricing(domain);
+      return buildAvailableResult(domain, startTime, pricing);
+    }
+
     console.log("RDAP lookup failed, fallback to WHOIS:", rdapError);
 
     try {
@@ -77,6 +148,10 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
         domain,
         getLookupOptions(domain),
       );
+      if (isDomain && isWhoisAvailableResponse(whoisData)) {
+        const pricing = await getAvailabilityPricing(domain);
+        return buildAvailableResult(domain, startTime, pricing);
+      }
       const result = await analyzeWhois(whoisData);
 
       return {

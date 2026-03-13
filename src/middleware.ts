@@ -3,8 +3,8 @@ import type { NextRequest } from "next/server";
 import { match } from "@formatjs/intl-localematcher";
 import Negotiator from "negotiator";
 
-let locales = ["en", "zh", "zh-tw", "de", "ru", "ja", "fr", "ko"];
-let defaultLocale = "en";
+let locales = ["en", "zh"];
+let defaultLocale = "zh";
 
 function getLocale(request: NextRequest): string {
   const storedLocale = request.cookies.get("NEXT_LOCALE")?.value;
@@ -20,9 +20,8 @@ function getLocale(request: NextRequest): string {
 
   // Map browser language codes to our locale codes
   const languageMap: { [key: string]: string } = {
-    "zh-tw": "zh-tw",
-    "zh-HK": "zh-tw",
-    "zh-MO": "zh-tw",
+    "zh-HK": "zh",
+    "zh-MO": "zh",
     "zh-CN": "zh",
     "zh-SG": "zh",
   };
