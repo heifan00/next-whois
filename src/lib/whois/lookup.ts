@@ -153,6 +153,9 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
         return buildAvailableResult(domain, startTime, pricing);
       }
       const result = await analyzeWhois(whoisData);
+      if (!result.domain) {
+        result.domain = domain;
+      }
 
       return {
         time: (performance.now() - startTime) / 1000,
