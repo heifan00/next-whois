@@ -33,8 +33,10 @@
 ## Task 2: Connect and verify Workers Builds
 
 - [x] User confirmed on 2026-10-10 that the dashboard Git connection was saved using the supplied settings: repository `heifan00/next-whois`, production branch `master`, build `pnpm build:cloudflare:ci`, deploy `pnpm exec opennextjs-cloudflare deploy`, root `/`, build variable `PNPM_VERSION=9.15.9`.
-- [ ] Verify a build for the pushed commit succeeds and that `94.cx` serves the new deployment. Record any concrete connection blocker if the dashboard remains inaccessible.
+- [x] Push `8c629e16b8221b1bf9b187b4ff60d5b1cc986c92` triggered Workers Build `99802911-e29b-451b-b691-a797df0dd159`, which completed successfully on 2026-10-10 at 15:22 Asia/Shanghai.
+- [x] Cloudflare's deployment API confirms version `2dccb357-7e0c-4a48-97e6-be4646f4e1d8` receives 100% of production traffic. `94.cx`, `www.94.cx`, and the public Worker all serve Next build `r1az9RWg9MzAPpcPn46JF`, different from the previous manual build.
+- [x] `LOOKUP_BASE_URL=https://94.cx node scripts/verify-cloudflare.mjs` completed with exit code 0 against the automatically deployed version, covering pages/assets, locales, prices in USD/CNY, domains, IPs, ASN, ccTLDs, and availability.
 
-**Connection status:** The user confirmed the Git connection after repository configuration commit `f3806e3` was pushed. The browser connector still returns `Unable to load browser request-header policy`; local Wrangler OAuth cannot read Workers Builds configuration. Push this connection record to verify that a new commit triggers a production build, then check GitHub build status, Cloudflare deployment metadata, and the public site. The first automatic build remains pending verification.
+**Connection status:** The user saved the Git connection after repository configuration commit `f3806e3` was pushed. A subsequent push triggered a successful production build, verified through GitHub check runs, Cloudflare deployment metadata, and the public site. The browser connector remains unavailable, but that no longer prevents verification of the Git deployment. An initial check of the previous manual version encountered incomplete ASN upstream data; the complete check of the automatically deployed version passed without application changes.
 
 **Ruling:** Reuse existing offline regression tests rather than add tests that mirror package scripts. Changes are build commands and documentation, with no application behavior changes.

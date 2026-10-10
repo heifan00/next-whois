@@ -67,6 +67,8 @@ pnpm deploy:cloudflare
 | 构建变量 / Build variable | `PNPM_VERSION=9.15.9` |
 | 非生产分支自动构建 / Preview builds | 关闭 |
 
+2026-10-10 已实测生产分支推送触发自动部署：提交 `8c629e1` 的 Workers Build 成功，新版本接管 100% 生产流量，`94.cx`、`www.94.cx` 与 Worker 地址的页面版本一致，完整线上检查通过。
+
 Cloudflare 会根据 `pnpm-lock.yaml` 安装依赖；保留锁文件并使用指定的 pnpm 版本。Node 版本由仓库的 `.node-version` 固定，版本覆盖方式见 [构建镜像文档](https://developers.cloudflare.com/workers/ci-cd/builds/build-image/)。构建变量应填写在 Build variables and secrets，而非 Worker 的运行时 Variables & Secrets。
 
 连接保存后，推送到 `master` 会触发测试、类型检查、构建和生产部署，继续更新当前 Worker 及 `94.cx`、`www.94.cx` 路由。构建命令失败时不会执行部署命令，线上继续使用原版本。部署命令直接上传已有 OpenNext 产物；不要在控制台使用 `pnpm deploy:cloudflare`，以免重复构建。
