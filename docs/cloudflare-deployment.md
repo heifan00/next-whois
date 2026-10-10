@@ -4,18 +4,16 @@
 
 ## 安装和检查
 
-使用 Node.js 22 或更高版本，以及 package.json 中指定的 pnpm 9.15.9：
+构建环境使用 `.node-version` 中固定的 Node.js 22.23.2，以及 package.json 中指定的 pnpm 9.15.9。现有 RDAP 测试直接导入 TypeScript，运行测试需要 Node.js 22.18 或更高版本：
 
 ```sh
 pnpm install --frozen-lockfile
-pnpm test:pricing
-pnpm test:middleware
-node --test scripts/rdap-http-client.test.mjs
-pnpm exec tsc --noEmit
-pnpm build:cloudflare
+pnpm build:cloudflare:ci
 ```
 
 Next.js 已升级到 15.5.27，以满足 OpenNext Cloudflare 1.20.10 的版本要求。普通 `pnpm build`、`pnpm start` 仍可用于服务器部署。
+
+`build:cloudflare:ci` 依次运行价格、语言跳转、RDAP 和构建链接的回归测试，执行 TypeScript 检查，然后生成 OpenNext 部署产物。任一步骤失败都会停止后续步骤。
 
 Windows 构建会使用进程内的符号链接兼容处理：没有符号链接权限时，目录使用 junction，文件复制到构建目录；pnpm 绝对目录链接会指向各阶段复制的依赖，使 OpenNext 的补丁作用于最终副本。该处理仅在构建进程中生效，不需要管理员权限，Linux 构建保持原生行为。可执行 `pnpm test:cloudflare:build` 检查此兼容处理。
 
@@ -56,8 +54,36 @@ pnpm deploy:cloudflare
 
 2026-10-10 已完成 Workers 发布和上述两个路由的接入。本地 Workers、公网 Workers 和 `94.cx` 的页面/API 检查均通过，`www.94.cx` 的页面版本与 Worker 一致，价格接口返回注册价 3.4 USD / 22.76 CNY（报价会随上游变化）。旧服务器进程未在本次操作中停止。
 
-## 后续更新
+## Git 自动部署
 
-目前使用 Wrangler 发布。Git 推送本身不会触发 Cloudflare 部署；代码更新后执行 `pnpm deploy:cloudflare`。若在控制台连接 GitHub 仓库，构建命令设置为 `pnpm build:cloudflare`，部署命令设置为 `pnpm exec opennextjs-cloudflare deploy`，并选择实际使用的生产分支。
+使用 Cloudflare 内置的 [Workers Builds Git 集成](https://developers.cloudflare.com/workers/ci-cd/builds/git-integration/)。首次连接时，在现有 Worker `next-whois-ui` 的 Settings → Build 中选择 Connect Git repository，并连接 `heifan00/next-whois`；使用以下配置：
+
+| 设置 | 值 |
+| --- | --- |
+| 生产分支 / Production branch | `master` |
+| 构建命令 / Build command | `pnpm build:cloudflare:ci` |
+| 部署命令 / Deploy command | `pnpm exec opennextjs-cloudflare deploy` |
+| 根目录 / Root directory | `/` |
+| 构建变量 / Build variable | `PNPM_VERSION=9.15.9` |
+| 非生产分支自动构建 / Preview builds | 关闭 |
+
+Cloudflare 会根据 `pnpm-lock.yaml` 安装依赖；保留锁文件并使用指定的 pnpm 版本。Node 版本由仓库的 `.node-version` 固定，版本覆盖方式见 [构建镜像文档](https://developers.cloudflare.com/workers/ci-cd/builds/build-image/)。构建变量应填写在 Build variables and secrets，而非 Worker 的运行时 Variables & Secrets。
+
+连接保存后，推送到 `master` 会触发测试、类型检查、构建和生产部署，继续更新当前 Worker 及 `94.cx`、`www.94.cx` 路由。构建命令失败时不会执行部署命令，线上继续使用原版本。部署命令直接上传已有 OpenNext 产物；不要在控制台使用 `pnpm deploy:cloudflare`，以免重复构建。
+
+部署授权由 Cloudflare 控制台管理，无需在 GitHub Actions 中保存 Token，也无需让构建环境依赖本机 Wrangler 登录。只有控制台已保存 Git 连接且对应提交的 Build 状态为成功，才能确认自动部署已启用。首次连接后检查生产分支和构建日志，并执行：
+
+```sh
+# Linux/macOS
+LOOKUP_BASE_URL=https://94.cx pnpm test:cloudflare
+```
+
+```powershell
+# Windows PowerShell
+$env:LOOKUP_BASE_URL = "https://94.cx"
+pnpm test:cloudflare
+```
+
+公网检查依赖上游服务，放在发布后的检查中；构建中的测试使用本地数据和本地 HTTP 服务。必要时仍可用 `pnpm deploy:cloudflare` 手动发布。
 
 Moz 指标如需启用，可使用 `pnpm exec wrangler secret put MOZ_ACCESS_ID` 和 `pnpm exec wrangler secret put MOZ_SECRET_KEY`。默认保持未配置状态。不要提交 `.dev.vars`、Wrangler 授权或任何密钥。
