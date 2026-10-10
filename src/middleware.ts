@@ -45,7 +45,7 @@ function getLocale(request: NextRequest): string {
 }
 
 export function middleware(request: NextRequest) {
-  const pathname = request.nextUrl.pathname;
+  const pathname = new URL(request.url).pathname;
 
   const currentLocale = locales.find(
     (locale) => pathname === `/${locale}` || pathname.startsWith(`/${locale}/`),
@@ -65,6 +65,9 @@ export function middleware(request: NextRequest) {
   if (pathnameHasLocale) return;
 
   const locale = getLocale(request);
+  // Next canonicalizes the default locale to an unprefixed URL. Redirecting
+  // that URL to /zh would be canonicalized back to itself by its adapter.
+  if (locale === defaultLocale) return;
   request.nextUrl.pathname = `/${locale}${pathname}`;
   const response = NextResponse.redirect(request.nextUrl);
   response.cookies.set("NEXT_LOCALE", locale, {

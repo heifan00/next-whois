@@ -31,6 +31,11 @@ No need to say more, just try it out! 🥳
 👉 [Contribute](https://github.com/zmh-program/next-whois-ui/pulls)
 
 ## Deploy
+
+### Cloudflare Workers
+
+See [Cloudflare deployment instructions](docs/cloudflare-deployment.md) for OpenNext setup, preview, deployment, and rollback.
+
 #### `1` 🚀 Platforms (Recommended)
 [Vercel](https://vercel.com/import/project?template=https://github.com/zmh-program/next-whois-ui) / [Netlify](https://app.netlify.com/start/deploy?repository=https://github.com/zmh-program/next-whois-ui) / [Zeabur](https://zeabur.com/templates/UHCCCT)
 #### `2` 🐳 Docker

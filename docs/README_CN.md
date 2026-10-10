@@ -32,6 +32,10 @@
 
 ## 部署
 
+### Cloudflare Workers
+
+参见 [Cloudflare 部署说明](cloudflare-deployment.md)，包含 OpenNext 构建、预览、发布和回退步骤。
+
 #### `1` 🚀 云平台部署（推荐）
 
 [Vercel](https://vercel.com/import/project?template=https://github.com/zmh-program/next-whois-ui) / [Netlify](https://app.netlify.com/start/deploy?repository=https://github.com/zmh-program/next-whois-ui) / [Zeabur](https://zeabur.com/templates/UHCCCT)
