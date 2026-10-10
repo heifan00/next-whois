@@ -32,9 +32,9 @@
 
 ## Task 2: Connect and verify Workers Builds
 
-- [ ] Connect `heifan00/next-whois` to the existing Worker through the Cloudflare dashboard, production branch `master`, build `pnpm build:cloudflare:ci`, deploy `pnpm exec opennextjs-cloudflare deploy`, root `/`, build variable `PNPM_VERSION=9.15.9`.
+- [x] User confirmed on 2026-10-10 that the dashboard Git connection was saved using the supplied settings: repository `heifan00/next-whois`, production branch `master`, build `pnpm build:cloudflare:ci`, deploy `pnpm exec opennextjs-cloudflare deploy`, root `/`, build variable `PNPM_VERSION=9.15.9`.
 - [ ] Verify a build for the pushed commit succeeds and that `94.cx` serves the new deployment. Record any concrete connection blocker if the dashboard remains inaccessible.
 
-**Connection status:** Even after the user reattached Chrome and the current Worker URL, and after resetting the browser session, the browser connector returns `Unable to load browser request-header policy`. The user has been given the exact dashboard settings for a one-time connection. Local Wrangler OAuth lacks Workers Builds configuration access. Git binding and the first automatic build are pending; repository readiness alone is not completion.
+**Connection status:** The user confirmed the Git connection after repository configuration commit `f3806e3` was pushed. The browser connector still returns `Unable to load browser request-header policy`; local Wrangler OAuth cannot read Workers Builds configuration. Push this connection record to verify that a new commit triggers a production build, then check GitHub build status, Cloudflare deployment metadata, and the public site. The first automatic build remains pending verification.
 
 **Ruling:** Reuse existing offline regression tests rather than add tests that mirror package scripts. Changes are build commands and documentation, with no application behavior changes.
