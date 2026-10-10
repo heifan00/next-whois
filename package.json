@@ -10,6 +10,7 @@
     "pm2:restart": "bash scripts/restart-production.sh",
     "test:whois:cctld": "node scripts/verify-cctld-rdap.mjs",
     "test:whois:li": "node scripts/verify-cctld-rdap.mjs",
+    "test:pricing": "node --test scripts/verify-pricing.mjs",
     "lint": "next lint",
     "ui": "pnpm dlx shadcn@latest add",
     "prettier": "prettier --write src/**/*.{ts,tsx,js,jsx,json,md}"

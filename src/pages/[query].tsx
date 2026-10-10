@@ -49,7 +49,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { WhoisAnalyzeResult, WhoisResult } from "@/lib/whois/types";
-import { DomainPricing } from "@/lib/pricing/client";
+import { DomainPricing, formatDomainPrice } from "@/lib/pricing/client";
 import Icon from "@/components/icon";
 import { useImageCapture } from "@/lib/image";
 import ErrorArea from "@/components/items/error-area";
@@ -408,10 +408,6 @@ const ResultComp = React.forwardRef<HTMLDivElement, Props>(
     const [priceCurrency, setPriceCurrency] = React.useState<
       "original" | "cny"
     >("original");
-    const [fxRates, setFxRates] = React.useState<{
-      base: string;
-      rates: Record<string, number>;
-    } | null>(null);
 
     const isDomainAvailableError = (err?: string): boolean => {
       if (!err) return false;
@@ -428,60 +424,12 @@ const ResultComp = React.forwardRef<HTMLDivElement, Props>(
     const hasPricing =
       (pricing?.register?.length || 0) > 0 || (pricing?.renew?.length || 0) > 0;
 
-    useEffect(() => {
-      if (priceCurrency !== "cny" || fxRates) return;
-      fetch("/api/rates")
-        .then((res) => res.json())
-        .then((data) => {
-          if (data && data.rates) {
-            setFxRates({
-              base: String(data.base || "USD").toUpperCase(),
-              rates: data.rates as Record<string, number>,
-            });
-          }
-        })
-        .catch((err) => {
-          console.error("Failed to fetch exchange rates:", err);
-        });
-    }, [priceCurrency, fxRates]);
-
-    const toCny = (amount: number, currency: string) => {
-      const upper = currency.trim().toUpperCase();
-      if (upper === "CNY" || upper === "RMB") return amount;
-      if (!fxRates?.rates) return null;
-      const base = (fxRates.base || "USD").toUpperCase();
-      const rates = fxRates.rates;
-      const to = "CNY";
-
-      if (upper === base) {
-        const toRate = rates[to];
-        return typeof toRate === "number" ? amount * toRate : null;
-      }
-
-      const fromRate = rates[upper];
-      if (typeof fromRate !== "number") return null;
-
-      if (to === base) {
-        return amount / fromRate;
-      }
-
-      const toRate = rates[to];
-      if (typeof toRate !== "number") return null;
-
-      return (amount / fromRate) * toRate;
-    };
-
-    const formatPrice = (amount: number | string, currency: string) => {
-      if (typeof amount !== "number") {
-        return String(amount);
-      }
-      if (priceCurrency === "cny") {
-        const converted = toCny(amount, currency);
-        if (converted === null) return `${amount} ${currency.toUpperCase()}`;
-        return `${converted.toFixed(2)} CNY`;
-      }
-      return `${amount} ${currency.toUpperCase()}`;
-    };
+    const registerPrice = result?.registerPrice
+      ? formatDomainPrice(result.registerPrice, "register", priceCurrency)
+      : null;
+    const renewPrice = result?.renewPrice
+      ? formatDomainPrice(result.renewPrice, "renew", priceCurrency)
+      : null;
 
     const renderCurrencyToggle = () => (
       <Button
@@ -502,10 +450,10 @@ const ResultComp = React.forwardRef<HTMLDivElement, Props>(
     const renderPricingList = (
       title: string,
       items: DomainPricing[] | undefined,
-      priceKey: "new" | "renew",
+      priceKey: "register" | "renew",
     ) => {
       const list = (items || []).filter(
-        (item) => typeof item[priceKey] === "number" && item[priceKey] >= 0,
+        (item) => formatDomainPrice(item, priceKey, "original") !== null,
       );
       if (list.length === 0) return null;
 
@@ -528,7 +476,7 @@ const ResultComp = React.forwardRef<HTMLDivElement, Props>(
                     <RiExternalLinkLine className="w-3 h-3 ml-1 text-muted-foreground" />
                   </div>
                   <span className="text-secondary">
-                    {formatPrice(item[priceKey] as number, item.currency || "")}
+                    {formatDomainPrice(item, priceKey, priceCurrency)}
                   </span>
                 </Link>
               ) : (
@@ -540,7 +488,7 @@ const ResultComp = React.forwardRef<HTMLDivElement, Props>(
                     <span>{item.registrarname || item.registrar}</span>
                   </div>
                   <span className="text-secondary">
-                    {formatPrice(item[priceKey] as number, item.currency || "")}
+                    {formatDomainPrice(item, priceKey, priceCurrency)}
                   </span>
                 </div>
               )
@@ -576,7 +524,7 @@ const ResultComp = React.forwardRef<HTMLDivElement, Props>(
               </div>
             )}
 
-            {result?.registerPrice && (
+            {result?.registerPrice && registerPrice !== null && (
               <Link
                 target="_blank"
                 href={result.registerPrice.externalLink}
@@ -590,15 +538,12 @@ const ResultComp = React.forwardRef<HTMLDivElement, Props>(
                   )}
                 >
                   {t("register_price")}
-                  {formatPrice(
-                    result.registerPrice.new as number,
-                    result.registerPrice.currency,
-                  )}
+                  {registerPrice}
                 </span>
               </Link>
             )}
 
-            {result?.renewPrice && (
+            {result?.renewPrice && renewPrice !== null && (
               <Link
                 href={result.renewPrice.externalLink}
                 target="_blank"
@@ -611,15 +556,12 @@ const ResultComp = React.forwardRef<HTMLDivElement, Props>(
                   }
                 >
                   {t("renew_price")}
-                  {formatPrice(
-                    result.renewPrice.renew as number,
-                    result.renewPrice.currency,
-                  )}
+                  {renewPrice}
                 </span>
               </Link>
             )}
 
-            {(result?.registerPrice || result?.renewPrice || isAvailable) && (
+            {(registerPrice !== null || renewPrice !== null || hasPricing) && (
               <div className="ml-1">{renderCurrencyToggle()}</div>
             )}
 
@@ -847,7 +789,7 @@ const ResultComp = React.forwardRef<HTMLDivElement, Props>(
                           {renderPricingList(
                             t("cheapest_register"),
                             pricing?.register,
-                            "new",
+                            "register",
                           )}
                           {renderPricingList(
                             t("cheapest_renew"),

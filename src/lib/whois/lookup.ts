@@ -39,7 +39,7 @@ async function getAvailabilityPricing(
   domain: string,
 ): Promise<DomainPricingSummary> {
   const [register, renew] = await Promise.all([
-    getDomainPricingList(domain, "new"),
+    getDomainPricingList(domain, "register"),
     getDomainPricingList(domain, "renew"),
   ]);
   return { register, renew };

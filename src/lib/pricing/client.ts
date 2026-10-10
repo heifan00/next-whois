@@ -1,25 +1,32 @@
 const NAZHUMI_API_URL = "https://www.nazhumi.com/api/v1";
 
-type NazhumiOrder = "new" | "renew" | "transfer";
+export type NazhumiOrder = "register" | "renew" | "transfer";
+type PriceAmount = number | "n/a";
 interface NazhumiRegistrar {
   registrar: string;
   registrarname: string;
   registrarweb: string;
-  new: number | "n/a";
-  renew: number | "n/a";
-  transfer: number | "n/a";
+  register: PriceAmount;
+  renew: PriceAmount;
+  transfer: PriceAmount;
+  register_cny?: PriceAmount;
+  renew_cny?: PriceAmount;
+  transfer_cny?: PriceAmount;
   currency: string;
   currencyname: string;
   currencytype: string;
-  promocode: boolean;
+  promocode: Record<NazhumiOrder, boolean>;
   updatedtime: string;
 }
 
 interface NazhumiResponse {
-  domain: string;
-  order: "new" | "renew" | "transfer";
-  count: number;
-  price: NazhumiRegistrar[];
+  code: number;
+  data?: {
+    domain: string;
+    order: NazhumiOrder;
+    count: number;
+    price: NazhumiRegistrar[];
+  };
 }
 
 export interface DomainPricing extends NazhumiRegistrar {
@@ -27,21 +34,28 @@ export interface DomainPricing extends NazhumiRegistrar {
   externalLink: string;
 }
 
-const defaultDomainPricing: DomainPricing = {
-  registrar: "Unknown",
-  registrarname: "Unknown",
-  registrarweb: "Unknown",
-  new: -1,
-  renew: -1,
-  transfer: -1,
-  currency: "Unknown",
-  currencyname: "Unknown",
-  currencytype: "Unknown",
-  promocode: false,
-  updatedtime: "Unknown",
-  isPremium: false,
-  externalLink: "",
-};
+function isPriceAmount(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0;
+}
+
+export function formatDomainPrice(
+  price: DomainPricing,
+  type: NazhumiOrder,
+  displayCurrency: "original" | "cny",
+): string | null {
+  const amount = price[type];
+  if (!isPriceAmount(amount)) return null;
+
+  const currency = (price.currency || "").trim().toUpperCase();
+  if (displayCurrency === "cny") {
+    const cnyAmount = price[`${type}_cny`];
+    if (isPriceAmount(cnyAmount)) return `${cnyAmount.toFixed(2)} CNY`;
+    if (currency === "CNY" || currency === "RMB") {
+      return `${amount.toFixed(2)} CNY`;
+    }
+  }
+  return `${amount} ${currency}`.trim();
+}
 
 function normalizeTld(domain: string): string {
   const raw = domain.trim().toLowerCase();
@@ -59,9 +73,9 @@ function toDomainPricing(
   return {
     ...registrar,
     isPremium:
-      typeof registrar.new === "number" &&
-      registrar.new > 100 &&
-      ["usd", "eur", "cad"].includes(registrar.currency.toLowerCase()),
+      isPriceAmount(registrar.register) &&
+      registrar.register > 100 &&
+      ["usd", "eur", "cad"].includes((registrar.currency || "").toLowerCase()),
     externalLink: `https://www.nazhumi.com/domain/${domain}/${type}`,
   };
 }
@@ -75,7 +89,7 @@ export async function getDomainPricingList(
     const tld = normalizeTld(domain);
     if (!tld) return [];
 
-    const url = `${NAZHUMI_API_URL}?domain=${encodeURIComponent(tld)}&order=${type}`;
+    const url = `${NAZHUMI_API_URL}?domain=${encodeURIComponent(tld)}&order=${type}&limit=${limit}&page=1`;
     const response = await fetch(url, {
       headers: {
         Accept: "application/json",
@@ -87,10 +101,14 @@ export async function getDomainPricingList(
       return [];
     }
 
-    const data: NazhumiResponse = await response.json().then((res) => res.data);
-    const list = Array.isArray(data?.price) ? data.price : [];
+    const body: NazhumiResponse = await response.json();
+    if (body?.code !== 100) return [];
+    const list = Array.isArray(body.data?.price) ? body.data.price : [];
 
-    return list.slice(0, limit).map((item) => toDomainPricing(item, domain, type));
+    return list
+      .filter((item) => item && isPriceAmount(item[type]))
+      .slice(0, limit)
+      .map((item) => toDomainPricing(item, tld, type));
   } catch (error) {
     console.error("Error fetching domain pricing list:", error);
     return [];

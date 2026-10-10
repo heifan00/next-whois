@@ -60,7 +60,7 @@ export async function applyParams(result: WhoisAnalyzeResult) {
       : calculateRemainingDays(result.expirationDate);
 
   // Get pricing information
-  result.registerPrice = await getDomainPricing(result.domain, "new");
+  result.registerPrice = await getDomainPricing(result.domain, "register");
   result.renewPrice = await getDomainPricing(result.domain, "renew");
   result.transferPrice = await getDomainPricing(result.domain, "transfer");
 
