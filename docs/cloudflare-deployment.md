@@ -11,7 +11,7 @@ pnpm install --frozen-lockfile
 pnpm build:cloudflare:ci
 ```
 
-Next.js 已升级到 15.5.27，以满足 OpenNext Cloudflare 1.20.10 的版本要求。普通 `pnpm build`、`pnpm start` 仍可用于服务器部署。
+项目固定使用 Next.js 15.5.29 和 OpenNext Cloudflare 1.20.16。此组合包含最新补丁，并识别 Next.js 15 延长后的维护支持期；正常构建无需添加 `--dangerouslyUseUnsupportedNextVersion`。普通 `pnpm build`、`pnpm start` 仍可用于服务器部署。
 
 `build:cloudflare:ci` 依次运行价格、语言跳转、RDAP 和构建链接的回归测试，执行 TypeScript 检查，然后生成 OpenNext 部署产物。任一步骤失败都会停止后续步骤。
 
@@ -41,6 +41,14 @@ pnpm deploy:cloudflare
 已有 Wrangler 授权时无需重新登录。公开地址为 `https://next-whois-ui.heifan.workers.dev`。发布后可将 `LOOKUP_BASE_URL` 设置为该地址或 `https://94.cx`，再执行 `pnpm test:cloudflare`。
 
 `wrangler.jsonc` 中的兼容日期启用了 Workers 的 Node HTTP/TCP 支持。`RDAP_DNS_FAMILY=auto` 让 Workers 管理出站连接；WHOIS 通过 TCP 43 端口访问公开注册局。某些注册局可能限制 Cloudflare 出站 IP，需要根据具体查询检查日志。
+
+## 特殊后缀查询
+
+`.li` 注册局的公开 RDAP 通常不包含到期日期。目前对 Dynadot 托管的域名，会在缺少到期日期时补查注册商 RDAP，并在日期旁显示可点击的数据来源；注册局的创建日期和原始响应保持原样。注册商查询失败或没有公开数据时，页面提示向注册商确认，不推算到期时间。
+
+Google Registry 可能对 Cloudflare 共享出站 IP 返回 HTTP 429，影响 `.dev` 等后缀。页面会自动通过浏览器直接请求支持 CORS 的官方 RDAP 接口，并使用相同的解析逻辑展示结果。浏览器查询仍失败时，会显示官方查询链接。
+
+此时 `/api/lookup` 返回 HTTP 503，响应中的 `browserRdapUrl` 为官方查询地址；API 调用方可以从自己的网络请求该地址。服务端不再尝试已失效的 Google WHOIS，也不会将限流误判为域名未注册。
 
 ## 94.cx 路由和回退
 

@@ -10,7 +10,7 @@
     "build:cloudflare:ci": "pnpm test && pnpm typecheck && pnpm build:cloudflare",
     "preview:cloudflare": "node scripts/build-cloudflare.mjs && opennextjs-cloudflare preview",
     "deploy:cloudflare": "node scripts/build-cloudflare.mjs && opennextjs-cloudflare deploy",
-    "test": "node --test scripts/verify-pricing.mjs scripts/middleware-locales.test.mjs scripts/rdap-http-client.test.mjs && pnpm test:cloudflare:build",
+    "test": "node --test scripts/verify-pricing.mjs scripts/middleware-locales.test.mjs scripts/rdap-http-client.test.mjs scripts/rdap-client.test.mjs && pnpm test:cloudflare:build",
     "typecheck": "tsc --noEmit",
     "test:cloudflare:build": "node --require ./scripts/windows-build-symlinks.cjs --test scripts/windows-build-symlinks.test.mjs",
     "test:middleware": "node --test scripts/middleware-locales.test.mjs",
@@ -26,9 +26,9 @@
     "prettier": "prettier --write src/**/*.{ts,tsx,js,jsx,json,md}"
   },
   "dependencies": {
-    "@opennextjs/cloudflare": "1.20.10",
     "@formatjs/intl-localematcher": "^0.6.1",
     "@khmyznikov/pwa-install": "^0.4.4",
+    "@opennextjs/cloudflare": "1.20.16",
     "@radix-ui/react-dialog": "^1.1.1",
     "@radix-ui/react-dropdown-menu": "^2.1.1",
     "@radix-ui/react-popover": "^1.1.14",
@@ -50,7 +50,7 @@
     "moment": "^2.30.1",
     "negotiator": "^1.0.0",
     "net": "^1.0.2",
-    "next": "15.5.27",
+    "next": "15.5.29",
     "next-i18next": "^15.3.1",
     "next-pwa": "^5.6.0",
     "next-themes": "^0.3.0",

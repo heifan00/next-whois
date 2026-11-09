@@ -1,4 +1,4 @@
-import { DomainPricing } from "../pricing/client";
+import type { DomainPricing } from "../pricing/client";
 
 export type DomainPricingSummary = {
   register: DomainPricing[];
@@ -14,6 +14,7 @@ export type WhoisResult = {
   error?: string;
   available?: boolean;
   pricing?: DomainPricingSummary;
+  browserRdapUrl?: string;
 };
 
 export type WhoisAnalyzeResult = {
@@ -25,6 +26,7 @@ export type WhoisAnalyzeResult = {
   updatedDate: string;
   creationDate: string;
   expirationDate: string;
+  expirationDateSource?: string;
   status: DomainStatusProps[];
   nameServers: string[];
   registrantOrganization: string;

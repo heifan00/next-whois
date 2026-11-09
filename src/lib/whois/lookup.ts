@@ -3,7 +3,11 @@ import { DomainPricingSummary, WhoisResult } from "@/lib/whois/types";
 import { getJsonRedisValue, setJsonRedisValue } from "@/lib/server/redis";
 import { analyzeWhois } from "@/lib/whois/common_parser";
 import { extractDomain } from "@/lib/utils";
-import { lookupRdap, convertRdapToWhoisResult } from "@/lib/whois/rdap_client";
+import {
+  lookupRdap,
+  convertRdapToWhoisResult,
+  RegistryRdapError,
+} from "@/lib/whois/rdap_client";
 import whois from "whois-raw";
 import { getDomainPricingList } from "@/lib/pricing/client";
 
@@ -135,6 +139,26 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
       result,
     };
   } catch (rdapError: unknown) {
+    // Google limits Cloudflare's shared egress IPs. Its RDAP service supports
+    // CORS, so the page can query it from the visitor's browser instead.
+    if (
+      rdapError instanceof RegistryRdapError &&
+      rdapError.status === 429 &&
+      new URL(rdapError.url).hostname === "pubapi.registry.google"
+    ) {
+      const pricing = await getAvailabilityPricing(domain);
+      return {
+        time: (performance.now() - startTime) / 1000,
+        status: false,
+        cached: false,
+        source: "rdap",
+        browserRdapUrl: rdapError.url,
+        pricing,
+        error:
+          "The registry is rate limiting server queries. Open the lookup page to query it directly from your browser.",
+      };
+    }
+
     const isDomain = isDomainQuery(domain);
     if (isDomain && isRdapNotFoundError(rdapError)) {
       const pricing = await getAvailabilityPricing(domain);

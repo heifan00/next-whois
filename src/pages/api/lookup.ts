@@ -1,21 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { lookupWhoisWithCache } from "@/lib/whois/lookup";
-import { DomainPricingSummary, WhoisAnalyzeResult } from "@/lib/whois/types";
-
-type Data = {
-  status: boolean;
-  time: number;
-  cached?: boolean;
-  source?: "rdap" | "whois";
-  result?: WhoisAnalyzeResult;
-  error?: string;
-  available?: boolean;
-  pricing?: DomainPricingSummary;
-};
+import type { WhoisResult } from "@/lib/whois/types";
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<Data>,
+  res: NextApiResponse<WhoisResult>,
 ) {
   const { query } = req.query;
 
@@ -25,13 +14,10 @@ export default async function handler(
       .json({ time: -1, status: false, error: "Query is required" });
   }
 
-  const { time, status, result, error, cached, source, available, pricing } =
-    await lookupWhoisWithCache(query);
-  if (!status && !available) {
-    return res.status(500).json({ time, status, error });
+  const data = await lookupWhoisWithCache(query);
+  if (!data.status && !data.available) {
+    return res.status(data.browserRdapUrl ? 503 : 500).json(data);
   }
 
-  return res
-    .status(200)
-    .json({ time, status, result, cached, source, available, pricing });
+  return res.status(200).json(data);
 }

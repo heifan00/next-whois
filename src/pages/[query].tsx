@@ -59,6 +59,7 @@ import Clickable from "@/components/motion/clickable";
 import { SearchBox } from "@/components/search_box";
 import { useTranslation } from "@/lib/i18n";
 import { motion } from "framer-motion";
+import { lookupBrowserRdap } from "@/lib/whois/rdap_browser_client";
 
 type Props = {
   data: WhoisResult;
@@ -197,6 +198,9 @@ function ResultTable({ result, target }: ResultTableProps) {
 
   const [expand, setExpand] = React.useState<boolean>(false);
   const copy = useClipboard();
+  const hasExpirationDate =
+    !!result?.expirationDate && result.expirationDate !== "Unknown";
+  const isLiDomain = result?.domain.toLowerCase().endsWith(".li");
 
   return (
     result && (
@@ -315,12 +319,24 @@ function ResultTable({ result, target }: ResultTableProps) {
           </Row>
           <Row
             name={t("whois_fields.expiration_date")}
-            value={toReadableISODate(result.expirationDate)}
-            hidden={
-              !result.expirationDate || result.expirationDate === "Unknown"
+            value={
+              hasExpirationDate
+                ? toReadableISODate(result.expirationDate)
+                : t("expiration_unavailable")
             }
+            hidden={!hasExpirationDate && !isLiDomain}
           >
-            <InfoText content={t("utc")} />
+            {hasExpirationDate && <InfoText content={t("utc")} />}
+            {result.expirationDateSource && (
+              <a
+                href={result.expirationDateSource}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-1 text-xs underline whitespace-nowrap"
+              >
+                {t("expiration_registrar_source")}
+              </a>
+            )}
           </Row>
           <Row
             name={t("whois_fields.registrant_organization")}
@@ -929,6 +945,8 @@ const ResultComp = React.forwardRef<HTMLDivElement, Props>(
 export default function Lookup({ data, target }: Props) {
   const { t } = useTranslation();
   const [loading, setLoading] = React.useState<boolean>(false);
+  const [resolvedData, setResolvedData] = React.useState(data);
+  const [recovering, setRecovering] = React.useState(!!data.browserRdapUrl);
 
   const handleSearch = (query: string) => {
     setLoading(true);
@@ -936,10 +954,40 @@ export default function Lookup({ data, target }: Props) {
   };
 
   useEffect(() => {
-    if (data.status) {
+    setResolvedData(data);
+    if (!data.browserRdapUrl || data.status) {
+      setRecovering(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 15000);
+    let active = true;
+    setRecovering(true);
+    lookupBrowserRdap(data.browserRdapUrl, data.pricing, controller.signal)
+      .then((result) => {
+        if (active) setResolvedData({ ...result, time: data.time + result.time });
+      })
+      .catch(() => {
+        if (active) setResolvedData({ ...data, error: t("rdap_browser_failed") });
+      })
+      .finally(() => {
+        window.clearTimeout(timeout);
+        if (active) setRecovering(false);
+      });
+
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [data, target]);
+
+  useEffect(() => {
+    if (resolvedData.status) {
       addHistory(target);
     }
-  }, []);
+  }, [resolvedData.status, target]);
 
   return (
     <ScrollArea className={`w-full h-full`}>
@@ -979,7 +1027,7 @@ export default function Lookup({ data, target }: Props) {
             <SearchBox
               initialValue={target}
               onSearch={handleSearch}
-              loading={loading}
+              loading={loading || recovering}
             />
           </motion.div>
 
@@ -989,7 +1037,30 @@ export default function Lookup({ data, target }: Props) {
             transition={{ duration: 0.6, delay: 0.4, ease: "easeOut" }}
             className="w-full"
           >
-            <ResultComp data={data} target={target} />
+            {recovering ? (
+              <p
+                role="status"
+                className="mt-4 text-sm text-muted-foreground text-center"
+              >
+                {t("rdap_browser_loading")}
+              </p>
+            ) : (
+              <>
+                <ResultComp data={resolvedData} target={target} />
+                {!resolvedData.status &&
+                  !resolvedData.available &&
+                  data.browserRdapUrl && (
+                    <a
+                      href={data.browserRdapUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block mt-2 text-sm text-center underline"
+                    >
+                      {t("rdap_open_registry")}
+                    </a>
+                  )}
+              </>
+            )}
           </motion.div>
         </motion.div>
       </main>
