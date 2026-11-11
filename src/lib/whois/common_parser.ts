@@ -7,6 +7,7 @@ import { includeArgs } from "@/lib/utils";
 import moment from "moment";
 import { getMozMetrics } from "@/lib/moz/client";
 import { getDomainPricing } from "@/lib/pricing/client";
+import { supplementRegistrarExpiration } from "./registrar_rdap";
 
 function analyzeDomainStatus(status: string): DomainStatusProps {
   const segments = status.split(" ");
@@ -73,7 +74,10 @@ export async function applyParams(result: WhoisAnalyzeResult) {
   return result;
 }
 
-export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
+export async function analyzeWhois(
+  data: string,
+  query?: string,
+): Promise<WhoisAnalyzeResult> {
   const lines = data
     .split("\n")
     .map((line) => line.trim())
@@ -99,6 +103,7 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
     const value = segments.slice(1).join(":").trim();
 
     switch (key) {
+      case "domain":
       case "domain name":
         result.domain = value;
         break;
@@ -310,5 +315,6 @@ export async function analyzeWhois(data: string): Promise<WhoisAnalyzeResult> {
   }
   result.status = newStatus;
 
+  if (query) await supplementRegistrarExpiration(result, query);
   return await applyParams(result);
 }

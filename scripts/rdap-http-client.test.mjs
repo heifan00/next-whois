@@ -42,3 +42,26 @@ test("RDAP HTTP client can read a response body", async () => {
     });
   }
 });
+
+test("registrar RDAP requests can restrict redirects to the same origin", async (t) => {
+  const requests = [];
+  const server = http.createServer((request, response) => {
+    requests.push(request.url);
+    const location =
+      request.url === "/start"
+        ? "/record"
+        : `http://localhost:${server.address().port}/outside`;
+    response.writeHead(302, { location });
+    response.end();
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  t.after(() => new Promise((resolve) => server.close(resolve)));
+
+  const response = await client.fetchRdapText(
+    `http://127.0.0.1:${server.address().port}/start`,
+    { accept: "application/rdap+json" },
+    { sameOriginRedirects: true },
+  );
+  assert.equal(response.status, 302);
+  assert.deepEqual(requests, ["/start", "/record"]);
+});

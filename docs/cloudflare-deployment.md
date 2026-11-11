@@ -44,7 +44,7 @@ pnpm deploy:cloudflare
 
 ## 特殊后缀查询
 
-`.li` 注册局的公开 RDAP 通常不包含到期日期。目前对 Dynadot 托管的域名，会在缺少到期日期时补查注册商 RDAP，并在日期旁显示可点击的数据来源；注册局的创建日期和原始响应保持原样。注册商查询失败或没有公开数据时，页面提示向注册商确认，不推算到期时间。
+域名的注册局记录缺少到期日期时，RDAP 和 WHOIS 查询都会尝试补查注册商的公开 RDAP。程序根据已验证的注册商官网、[IANA 注册商目录](https://www.iana.org/assignments/registrar-ids/registrar-ids.xhtml)中的 ID 或名称，以及注册局提供且能在目录中核对的 RDAP 链接定位接口。补查适用于任意后缀，查到的日期统一按 UTC 展示，并附上来源。公开日期暂不可用时，页面提示向注册商确认。
 
 Google Registry 可能对 Cloudflare 共享出站 IP 返回 HTTP 429，影响 `.dev` 等后缀。页面会自动通过浏览器直接请求支持 CORS 的官方 RDAP 接口，并使用相同的解析逻辑展示结果。浏览器查询仍失败时，会显示官方查询链接。
 

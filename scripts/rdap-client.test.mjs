@@ -5,45 +5,41 @@ import test from "node:test";
 import ts from "typescript";
 
 const require = createRequire(import.meta.url);
-const compiled = ts.transpileModule(
-  readFileSync(
-    new URL("../src/lib/whois/rdap_client.ts", import.meta.url),
-    "utf8",
-  ),
-  {
-    compilerOptions: {
-      module: ts.ModuleKind.CommonJS,
-      target: ts.ScriptTarget.ES2022,
-      esModuleInterop: true,
-    },
-  },
-).outputText;
 
-const parserModule = { exports: {} };
-const compiledParser = ts.transpileModule(
-  readFileSync(
-    new URL("../src/lib/whois/rdap_parser.ts", import.meta.url),
-    "utf8",
-  ),
-  {
-    compilerOptions: {
-      module: ts.ModuleKind.CommonJS,
-      target: ts.ScriptTarget.ES2022,
-      esModuleInterop: true,
+function compileWhoisSource(name) {
+  return ts.transpileModule(
+    readFileSync(
+      new URL(`../src/lib/whois/${name}.ts`, import.meta.url),
+      "utf8",
+    ),
+    {
+      compilerOptions: {
+        module: ts.ModuleKind.CommonJS,
+        target: ts.ScriptTarget.ES2022,
+        esModuleInterop: true,
+      },
     },
-  },
-).outputText;
-new Function("require", "module", "exports", compiledParser)(
-  require,
-  parserModule,
-  parserModule.exports,
-);
+  ).outputText;
+}
+
+function evaluateModule(compiled, dependencies = {}) {
+  const module = { exports: {} };
+  new Function("require", "module", "exports", compiled)(
+    (id) => dependencies[id] ?? require(id),
+    module,
+    module.exports,
+  );
+  return module.exports;
+}
+
+const compiled = compileWhoisSource("rdap_client");
+const compiledRegistrar = compileWhoisSource("registrar_rdap");
+const parserModule = evaluateModule(compileWhoisSource("rdap_parser"));
 
 function loadClient(responses, bootstrap = { services: [] }) {
   const requests = [];
-  const module = { exports: {} };
   const dependencies = {
-    "./rdap_parser": parserModule.exports,
+    "./rdap_parser": parserModule,
     "node-rdap": {
       domain: async () => {
         throw new Error("Outdated RDAP fallback used");
@@ -63,16 +59,18 @@ function loadClient(responses, bootstrap = { services: [] }) {
         if (response instanceof Error) throw response;
         if (response.httpStatus)
           return { status: response.httpStatus, body: response.body };
+        if (typeof response === "string")
+          return { status: 200, body: response };
         return { status: 200, body: JSON.stringify(response) };
       },
     },
   };
-  new Function("require", "module", "exports", compiled)(
-    (id) => dependencies[id] ?? require(id),
-    module,
-    module.exports,
-  );
-  return { ...module.exports, requests };
+  const registrar = evaluateModule(compiledRegistrar, dependencies);
+  const client = evaluateModule(compiled, {
+    ...dependencies,
+    "./registrar_rdap": registrar,
+  });
+  return { ...client, requests, registrar };
 }
 
 // Public registry/registrar response shapes observed on 2026-11-09.
@@ -96,6 +94,12 @@ const liRegistrar = {
   ],
 };
 const registrarUrl = "https://rdap.dynadot.com/domain/java.li";
+const ianaRegistrarDirectoryUrl =
+  "https://www.iana.org/assignments/registrar-ids/registrar-ids-1.csv";
+const ianaRegistrarDirectory = [
+  "ID,Registrar Name,Status,RDAP Base URL",
+  '1068,"NameCheap, Inc.",Accredited,https://rdap.namecheap.com/',
+].join("\n");
 
 function loadBrowserClient() {
   const module = { exports: {} };
@@ -112,7 +116,7 @@ function loadBrowserClient() {
     },
   ).outputText;
   new Function("require", "module", "exports", source)(
-    (id) => (id === "./rdap_parser" ? parserModule.exports : require(id)),
+    (id) => (id === "./rdap_parser" ? parserModule : require(id)),
     module,
     module.exports,
   );
@@ -194,6 +198,54 @@ test(".li fills the missing expiry from its registrar without replacing registry
   assert.deepEqual(JSON.parse(result.rawRdapContent), liRegistry);
 });
 
+// Public .li responses observed from the registrars' RDAP services on 2026-11-11.
+for (const sample of [
+  {
+    registrar: "Gandi",
+    domain: "gandi.li",
+    website: "https://gandi.net",
+    source: "https://rdap.gandi.net/domain/gandi.li",
+    creationDate: "2007-03-19",
+    eventAction: "registrar expiration",
+    eventDate: "2026-12-31T23:59:59Z",
+    expected: "2026-12-31T23:59:59Z",
+  },
+  {
+    registrar: "EuroDNS",
+    domain: "eurodns.li",
+    website: "https://www.eurodns.com",
+    source: "https://rdap.eurodns.com/domain/eurodns.li",
+    creationDate: "2001-11-02",
+    eventAction: "expiration",
+    eventDate: "2026-11-29T00:00:00+01:00",
+    expected: "2026-11-28T23:00:00Z",
+  },
+]) {
+  test(`.li supplements expiry from ${sample.registrar} in UTC`, async () => {
+    const client = loadClient({
+      [sample.source]: {
+        ldhName: sample.domain,
+        events: [
+          { eventAction: sample.eventAction, eventDate: sample.eventDate },
+        ],
+      },
+    });
+    const result = await client.convertRdapToWhoisResult(
+      {
+        ldhName: sample.domain,
+        entities: [{ roles: ["registrar"], url: sample.website }],
+        events: [
+          { eventAction: "registration", eventDate: sample.creationDate },
+        ],
+      },
+      sample.domain,
+    );
+    assert.equal(result.expirationDate, sample.expected);
+    assert.equal(result.expirationDateSource, sample.source);
+    assert.equal(result.creationDate, sample.creationDate);
+  });
+}
+
 test(".li recognizes registrars that publish org instead of fn", async () => {
   const client = loadClient({ [registrarUrl]: liRegistrar });
   const result = await client.convertRdapToWhoisResult(
@@ -203,6 +255,126 @@ test(".li recognizes registrars that publish org instead of fn", async () => {
   assert.equal(result.registrar, "Dynadot Inc.");
   assert.equal(result.registrarURL, "https://www.dynadot.com");
   assert.equal(result.registrantOrganization, "Unknown");
+});
+
+test("expiry supplementation also works for .ch registry records", async () => {
+  const source = "https://rdap.eurodns.com/domain/eurodns.ch";
+  const client = loadClient({
+    [source]: {
+      ldhName: "eurodns.ch",
+      events: [
+        { eventAction: "expiration", eventDate: "2026-11-29T00:00:00+01:00" },
+      ],
+    },
+  });
+  const result = await client.convertRdapToWhoisResult(
+    {
+      ldhName: "eurodns.ch",
+      entities: [{ roles: ["registrar"], url: "https://www.eurodns.com" }],
+      events: [{ eventAction: "registration", eventDate: "2001-11-02" }],
+    },
+    "eurodns.ch",
+  );
+  assert.equal(result.expirationDate, "2026-11-28T23:00:00Z");
+  assert.equal(result.expirationDateSource, source);
+  assert.deepEqual(client.requests, [source]);
+});
+
+test("a registrar ID discovers an RDAP endpoint without a website mapping", async () => {
+  const source = "https://rdap.namecheap.com/domain/example.org";
+  const client = loadClient({
+    [ianaRegistrarDirectoryUrl]: ianaRegistrarDirectory,
+    [source]: {
+      ldhName: "example.org",
+      events: [
+        {
+          eventAction: "registrar expiration",
+          eventDate: "2027-09-01T12:00:00Z",
+        },
+      ],
+    },
+  });
+  const result = await client.convertRdapToWhoisResult(
+    {
+      ldhName: "example.org",
+      entities: [
+        {
+          roles: ["registrar"],
+          publicIds: [{ type: "IANA Registrar ID", identifier: "1068" }],
+        },
+      ],
+      events: [{ eventAction: "expiration", eventDate: "REDACTED" }],
+    },
+    "example.org",
+  );
+  assert.equal(result.expirationDate, "2027-09-01T12:00:00Z");
+  assert.equal(result.expirationDateSource, source);
+  assert.deepEqual(client.requests, [ianaRegistrarDirectoryUrl, source]);
+});
+
+test("RDAP referrals select a listed endpoint for the queried domain", async () => {
+  const domain = "example.net";
+  const source = `https://rdap.namecheap.com/domain/${domain}`;
+  const client = loadClient({
+    [ianaRegistrarDirectoryUrl]: ianaRegistrarDirectory,
+    [source]: {
+      ldhName: domain,
+      events: [
+        { eventAction: "expiration", eventDate: "2027-10-20T00:00:00Z" },
+      ],
+    },
+  });
+  const result = await client.convertRdapToWhoisResult(
+    {
+      ldhName: domain,
+      links: [
+        `https://unlisted.example/domain/${domain}`,
+        "https://rdap.namecheap.com/domain/other.net",
+        source,
+      ].map((href) => ({
+        rel: "related",
+        type: "application/rdap+json",
+        href,
+      })),
+    },
+    domain,
+  );
+  assert.equal(result.expirationDateSource, source);
+  assert.deepEqual(client.requests, [ianaRegistrarDirectoryUrl, source]);
+});
+
+test("WHOIS results discover registrar RDAP by the exact registrar name", async () => {
+  const source = "https://rdap.namecheap.com/domain/example.nz";
+  const client = loadClient({
+    [ianaRegistrarDirectoryUrl]: ianaRegistrarDirectory,
+    [source]: {
+      ldhName: "example.nz",
+      events: [
+        { eventAction: "expiration", eventDate: "2027-06-05T00:00:00Z" },
+      ],
+    },
+  });
+  const { analyzeWhois } = evaluateModule(compileWhoisSource("common_parser"), {
+    "./registrar_rdap": client.registrar,
+    "@/lib/whois/types": evaluateModule(compileWhoisSource("types")),
+    "@/lib/utils": {
+      includeArgs: (text, ...keys) => keys.some((key) => text.includes(key)),
+    },
+    "@/lib/pricing/client": { getDomainPricing: async () => null },
+    "@/lib/moz/client": {
+      getMozMetrics: async () => ({
+        domainAuthority: 0,
+        pageAuthority: 0,
+        spamScore: 0,
+      }),
+    },
+  });
+  const result = await analyzeWhois(
+    "domain: EXAMPLE.NZ\nRegistrar: NameCheap, Inc.\n",
+    "example.nz",
+  );
+  assert.equal(result.expirationDate, "2027-06-05T00:00:00Z");
+  assert.equal(result.expirationDateSource, source);
 });
 
 test("registrar failures and mismatched domains cannot break a registered .li result", async () => {

@@ -176,7 +176,7 @@ export async function lookupWhois(domain: string): Promise<WhoisResult> {
         const pricing = await getAvailabilityPricing(domain);
         return buildAvailableResult(domain, startTime, pricing);
       }
-      const result = await analyzeWhois(whoisData);
+      const result = await analyzeWhois(whoisData, isDomain ? domain : undefined);
       if (!result.domain) {
         result.domain = domain;
       }

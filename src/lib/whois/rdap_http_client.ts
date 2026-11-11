@@ -36,6 +36,7 @@ function getRdapTimeoutMs(): number {
 export function fetchRdapText(
   url: string,
   headers: Record<string, string>,
+  options: { sameOriginRedirects?: boolean } = {},
   redirectCount = 0,
 ): Promise<RdapHttpResponse> {
   return new Promise((resolve, reject) => {
@@ -66,11 +67,26 @@ export function fetchRdapText(
             status >= 300 &&
             status < 400 &&
             location &&
-            redirectCount < MAX_REDIRECTS
+            redirectCount < MAX_REDIRECTS &&
+            URL.canParse(location, target)
           ) {
-            const redirectUrl = new URL(location, target).toString();
-            resolve(fetchRdapText(redirectUrl, headers, redirectCount + 1));
-            return;
+            const redirect = new URL(location, target);
+            if (
+              !options.sameOriginRedirects ||
+              (redirect.origin === target.origin &&
+                !redirect.username &&
+                !redirect.password)
+            ) {
+              resolve(
+                fetchRdapText(
+                  redirect.href,
+                  headers,
+                  options,
+                  redirectCount + 1,
+                ),
+              );
+              return;
+            }
           }
 
           resolve({

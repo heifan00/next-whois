@@ -8,6 +8,7 @@ export interface RdapResponse {
   handle?: string;
   ldhName?: string;
   unicodeName?: string;
+  links?: Array<{ href: string; rel?: string; type?: string }>;
   entities?: Array<{
     handle?: string;
     roles?: string[];
@@ -138,9 +139,12 @@ function parseRdapEntity(entities: any[]): {
 }
 
 export function findExpirationEvent(events: RdapResponse["events"] = []) {
+  const datedEvents = events.filter((event) =>
+    Number.isFinite(Date.parse(event.eventDate)),
+  );
   return (
-    events.find((event) => event.eventAction === "expiration") ||
-    events.find((event) => event.eventAction === "registrar expiration")
+    datedEvents.find((event) => event.eventAction === "expiration") ||
+    datedEvents.find((event) => event.eventAction === "registrar expiration")
   );
 }
 

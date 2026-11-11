@@ -2,6 +2,7 @@ import { lookupWhoisWithCache } from "@/lib/whois/lookup";
 import {
   cleanDomainQuery,
   cn,
+  extractDomain,
   getWindowHref,
   toReadableISODate,
   toSearchURI,
@@ -200,7 +201,7 @@ function ResultTable({ result, target }: ResultTableProps) {
   const copy = useClipboard();
   const hasExpirationDate =
     !!result?.expirationDate && result.expirationDate !== "Unknown";
-  const isLiDomain = result?.domain.toLowerCase().endsWith(".li");
+  const isDomainResult = !!result && !!extractDomain(result.domain);
 
   return (
     result && (
@@ -324,7 +325,7 @@ function ResultTable({ result, target }: ResultTableProps) {
                 ? toReadableISODate(result.expirationDate)
                 : t("expiration_unavailable")
             }
-            hidden={!hasExpirationDate && !isLiDomain}
+            hidden={!hasExpirationDate && !isDomainResult}
           >
             {hasExpirationDate && <InfoText content={t("utc")} />}
             {result.expirationDateSource && (

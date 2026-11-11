@@ -2,7 +2,6 @@ import { domain, ip, autnum } from "node-rdap";
 import type { WhoisAnalyzeResult } from "./types";
 import {
   DEFAULT_RDAP_SERVER,
-  findExpirationEvent,
   parseRdapToWhoisResult,
   type RdapResponse,
 } from "./rdap_parser";
@@ -10,17 +9,13 @@ export type { RdapResponse } from "./rdap_parser";
 import { extractDomain } from "@/lib/utils";
 import { applyParams } from "./common_parser";
 import { fetchRdapJson, fetchRdapText } from "./rdap_http_client";
+import { supplementRegistrarExpiration } from "./registrar_rdap";
 
 const IANA_RDAP_DNS_BOOTSTRAP_URL = "https://data.iana.org/rdap/dns.json";
 const REGISTRY_RDAP_SERVERS: Record<string, string> = {
   ".li": "https://rdap.nic.li",
   ".ch": "https://rdap.nic.ch",
   ".dev": "https://pubapi.registry.google/rdap/",
-};
-// SWITCH omits expiry dates and registrar RDAP referrals for .li domains.
-// Dynadot publishes them at the endpoint listed in IANA's registrar directory.
-const REGISTRAR_RDAP_SERVERS: Record<string, string> = {
-  "dynadot.com": "https://rdap.dynadot.com/",
 };
 
 type IanaRdapBootstrap = {
@@ -160,59 +155,13 @@ export async function lookupRdap(query: string): Promise<any> {
   }
 }
 
-async function getRegistrarExpiration(rdapData: RdapResponse): Promise<
-  | {
-      date: string;
-      source: string;
-    }
-  | undefined
-> {
-  const domain = rdapData.ldhName || rdapData.unicodeName;
-  if (!domain || getDomainTld(domain) !== "li") return;
-
-  const registrar = rdapData.entities?.find((entity) =>
-    entity.roles?.includes("registrar"),
-  );
-  if (!registrar?.url) return;
-
-  try {
-    const hostname = new URL(registrar.url).hostname
-      .toLowerCase()
-      .replace(/^www\./, "");
-    const rdapServer = REGISTRAR_RDAP_SERVERS[hostname];
-    if (!rdapServer) return;
-
-    const registrarData: RdapResponse = await lookupRegistryRdap(
-      domain,
-      rdapServer,
-    );
-    const returnedDomain = registrarData.ldhName || registrarData.unicodeName;
-    if (returnedDomain?.toLowerCase() !== domain.toLowerCase()) return;
-
-    const event = findExpirationEvent(registrarData.events);
-    if (!event || !Number.isFinite(Date.parse(event.eventDate))) return;
-
-    return {
-      date: event.eventDate,
-      source: `${normalizeRdapServer(rdapServer)}domain/${encodeURIComponent(domain)}`,
-    };
-  } catch (error) {
-    // A failed supplementary lookup must not turn a registered domain into an error.
-    console.warn("Registrar RDAP expiry lookup failed:", error);
-  }
-}
-
 export async function convertRdapToWhoisResult(
   rdapData: RdapResponse,
   originalQuery: string,
 ): Promise<WhoisAnalyzeResult> {
   const result = parseRdapToWhoisResult(rdapData, originalQuery);
-  if (result.expirationDate === "Unknown") {
-    const expiry = await getRegistrarExpiration(rdapData);
-    if (expiry) {
-      result.expirationDate = expiry.date;
-      result.expirationDateSource = expiry.source;
-    }
+  if (rdapData.ldhName || rdapData.unicodeName) {
+    await supplementRegistrarExpiration(result, originalQuery, rdapData.links);
   }
   return await applyParams(result);
 }
