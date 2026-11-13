@@ -64,6 +64,10 @@ GET /api/v2/lookup?query=1.1.1.0%2F24&includeRaw=true`}</pre>
         </section>
         <section>
           <h2 className="text-xl font-semibold">结果状态</h2>
+          <p>
+            所有查询响应均带 X-App-Version，值为构建时 Git 提交号的前 12
+            位，可用于核对部署版本。
+          </p>
           <div className="overflow-x-auto">
             <table className="w-full mt-3 text-left">
               <thead>
@@ -92,6 +96,11 @@ GET /api/v2/lookup?query=1.1.1.0%2F24&includeRaw=true`}</pre>
         </section>
         <section>
           <h2 className="text-xl font-semibold">结构与字段含义</h2>
+          <p>
+            ASN/IP 的日期和 handle
+            取自对应资源记录，组织日期不会覆盖资源日期。ARIN WHOIS
+            联系人按角色解析并去重，RDAP 全空联系人不进入列表。
+          </p>
           <p>
             公共字段：query、normalizedQuery、queryType、outcome、source、data、error、warnings、queriedAt、cache、timing、pricing。缺失标量为
             null，空列表为 []，日期为 ISO 8601 UTC；无法确定时区的时间保持

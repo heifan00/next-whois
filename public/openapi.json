@@ -163,14 +163,18 @@
                           "abuse": []
                         },
                         "description": [],
-                        "cidrs": ["1.1.1.0/24"],
+                        "cidrs": [
+                          "1.1.1.0/24"
+                        ],
                         "startAddress": "1.1.1.0",
                         "endAddress": "1.1.1.255",
                         "netRange": "1.1.1.0 - 1.1.1.255",
                         "netName": "APNIC-LABS",
                         "netType": null,
                         "routing": {
-                          "mentionedASNs": ["AS13335"],
+                          "mentionedASNs": [
+                            "AS13335"
+                          ],
                           "mentionSource": "rdap.remarks",
                           "whoisOriginAS": null,
                           "bgpConfirmedASNs": [],
@@ -224,6 +228,14 @@
                   }
                 }
               }
+            },
+            "headers": {
+              "X-App-Version": {
+                "description": "First 12 characters of the Git revision used for the build, or development when unavailable.",
+                "schema": {
+                  "type": "string"
+                }
+              }
             }
           },
           "400": {
@@ -232,6 +244,14 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/LookupResponse"
+                }
+              }
+            },
+            "headers": {
+              "X-App-Version": {
+                "description": "First 12 characters of the Git revision used for the build, or development when unavailable.",
+                "schema": {
+                  "type": "string"
                 }
               }
             }
@@ -249,6 +269,12 @@
               "Allow": {
                 "schema": {
                   "const": "GET"
+                }
+              },
+              "X-App-Version": {
+                "description": "First 12 characters of the Git revision used for the build, or development when unavailable.",
+                "schema": {
+                  "type": "string"
                 }
               }
             }
@@ -269,6 +295,12 @@
                   "minimum": 1
                 },
                 "description": "Seconds to wait, only when known from the upstream."
+              },
+              "X-App-Version": {
+                "description": "First 12 characters of the Git revision used for the build, or development when unavailable.",
+                "schema": {
+                  "type": "string"
+                }
               }
             }
           },
@@ -280,6 +312,14 @@
                   "$ref": "#/components/schemas/LookupResponse"
                 }
               }
+            },
+            "headers": {
+              "X-App-Version": {
+                "description": "First 12 characters of the Git revision used for the build, or development when unavailable.",
+                "schema": {
+                  "type": "string"
+                }
+              }
             }
           },
           "504": {
@@ -288,6 +328,14 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/LookupResponse"
+                }
+              }
+            },
+            "headers": {
+              "X-App-Version": {
+                "description": "First 12 characters of the Git revision used for the build, or development when unavailable.",
+                "schema": {
+                  "type": "string"
                 }
               }
             }
@@ -310,28 +358,50 @@
         ],
         "properties": {
           "handle": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "name": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "organization": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "email": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "phone": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "country": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },
       "Contacts": {
         "type": "object",
-        "required": ["registrant", "technical", "abuse"],
+        "required": [
+          "registrant",
+          "technical",
+          "abuse"
+        ],
         "properties": {
           "registrant": {
             "type": "array",
@@ -376,52 +446,91 @@
         ],
         "properties": {
           "domain": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "registrar": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "registrarUrl": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "ianaId": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "creationDate": {
-            "type": ["string", "null"],
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "date-time"
           },
           "updatedDate": {
-            "type": ["string", "null"],
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "date-time"
           },
           "expirationDate": {
-            "type": ["string", "null"],
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "date-time"
           },
           "expirationDateSource": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "domainAge": {
-            "type": ["number", "null"],
+            "type": [
+              "number",
+              "null"
+            ],
             "minimum": 0,
             "description": "Whole years."
           },
           "remainingDays": {
-            "type": ["number", "null"],
+            "type": [
+              "number",
+              "null"
+            ],
             "minimum": 0
           },
           "status": {
             "type": "array",
             "items": {
               "type": "object",
-              "required": ["status", "url"],
+              "required": [
+                "status",
+                "url"
+              ],
               "properties": {
                 "status": {
-                  "type": ["string", "null"]
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 },
                 "url": {
-                  "type": ["string", "null"]
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 }
               }
             }
@@ -433,31 +542,53 @@
             }
           },
           "registrantOrganization": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "registeredCountry": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "dnssec": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "contacts": {
             "$ref": "#/components/schemas/Contacts"
           },
           "moz": {
             "type": "object",
-            "required": ["domainAuthority", "pageAuthority", "spamScore"],
+            "required": [
+              "domainAuthority",
+              "pageAuthority",
+              "spamScore"
+            ],
             "properties": {
               "domainAuthority": {
-                "type": ["number", "null"],
+                "type": [
+                  "number",
+                  "null"
+                ],
                 "minimum": 0
               },
               "pageAuthority": {
-                "type": ["number", "null"],
+                "type": [
+                  "number",
+                  "null"
+                ],
                 "minimum": 0
               },
               "spamScore": {
-                "type": ["number", "null"],
+                "type": [
+                  "number",
+                  "null"
+                ],
                 "minimum": 0
               }
             }
@@ -485,24 +616,39 @@
         ],
         "properties": {
           "handle": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "registeredOrganization": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "registeredCountry": {
-            "type": ["string", "null"],
+            "type": [
+              "string",
+              "null"
+            ],
             "description": "Registration country, not server geolocation."
           },
           "geolocation": {
             "type": "null"
           },
           "registrationDate": {
-            "type": ["string", "null"],
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "date-time"
           },
           "updatedDate": {
-            "type": ["string", "null"],
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "date-time"
           },
           "contacts": {
@@ -522,19 +668,34 @@
             "description": "Canonical IPv4 or IPv6 CIDRs."
           },
           "startAddress": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "endAddress": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "netRange": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "netName": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "netType": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "routing": {
             "type": "object",
@@ -553,10 +714,16 @@
                 }
               },
               "mentionSource": {
-                "type": ["string", "null"]
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "whoisOriginAS": {
-                "type": ["string", "null"]
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "bgpConfirmedASNs": {
                 "type": "array",
@@ -565,7 +732,10 @@
                 }
               },
               "bgpSource": {
-                "type": ["string", "null"]
+                "type": [
+                  "string",
+                  "null"
+                ]
               }
             }
           }
@@ -588,24 +758,39 @@
         ],
         "properties": {
           "handle": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "registeredOrganization": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "registeredCountry": {
-            "type": ["string", "null"],
+            "type": [
+              "string",
+              "null"
+            ],
             "description": "Registration country, not server geolocation."
           },
           "geolocation": {
             "type": "null"
           },
           "registrationDate": {
-            "type": ["string", "null"],
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "date-time"
           },
           "updatedDate": {
-            "type": ["string", "null"],
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "date-time"
           },
           "contacts": {
@@ -618,15 +803,24 @@
             }
           },
           "asNumber": {
-            "type": ["integer", "null"],
+            "type": [
+              "integer",
+              "null"
+            ],
             "minimum": 1,
             "maximum": 4294967295
           },
           "asName": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "allocationRegistry": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },
@@ -653,32 +847,58 @@
         ],
         "properties": {
           "operation": {
-            "enum": ["register", "renew", "transfer"]
+            "enum": [
+              "register",
+              "renew",
+              "transfer"
+            ]
           },
           "registrar": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "registrarUrl": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "amount": {
-            "type": ["number", "null"],
+            "type": [
+              "number",
+              "null"
+            ],
             "minimum": 0
           },
           "currency": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "amountCny": {
-            "type": ["number", "null"],
+            "type": [
+              "number",
+              "null"
+            ],
             "minimum": 0
           },
           "effectiveAmountCny": {
-            "type": ["number", "null"],
+            "type": [
+              "number",
+              "null"
+            ],
             "minimum": 0
           },
           "conversion": {
             "type": "object",
-            "required": ["source", "exchangeRate", "effectivePriceFormula"],
+            "required": [
+              "source",
+              "exchangeRate",
+              "effectivePriceFormula"
+            ],
             "properties": {
               "source": {
                 "const": "nazhumi"
@@ -711,7 +931,10 @@
             ],
             "properties": {
               "codeRequired": {
-                "type": ["boolean", "null"]
+                "type": [
+                  "boolean",
+                  "null"
+                ]
               },
               "code": {
                 "type": "null"
@@ -729,11 +952,17 @@
             }
           },
           "updatedAt": {
-            "type": ["string", "null"],
+            "type": [
+              "string",
+              "null"
+            ],
             "format": "date-time"
           },
           "sourceUpdatedAtText": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "sourceTimezone": {
             "type": "null"
@@ -742,7 +971,10 @@
             "const": "https://www.nazhumi.com"
           },
           "sourceUrl": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       },
@@ -760,7 +992,10 @@
             "const": "tld"
           },
           "tld": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "domainSpecific": {
             "const": false
@@ -788,14 +1023,23 @@
         ],
         "properties": {
           "whois": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "rdap": {
-            "type": ["object", "null"],
+            "type": [
+              "object",
+              "null"
+            ],
             "additionalProperties": true
           },
           "rdapPreview": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "truncated": {
             "type": "boolean"
@@ -830,10 +1074,20 @@
             "type": "string"
           },
           "normalizedQuery": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "queryType": {
-            "enum": ["domain", "ipv4", "ipv6", "asn", "cidr", null]
+            "enum": [
+              "domain",
+              "ipv4",
+              "ipv6",
+              "asn",
+              "cidr",
+              null
+            ]
           },
           "outcome": {
             "enum": [
@@ -849,13 +1103,22 @@
             "anyOf": [
               {
                 "type": "object",
-                "required": ["protocol", "server"],
+                "required": [
+                  "protocol",
+                  "server"
+                ],
                 "properties": {
                   "protocol": {
-                    "enum": ["rdap", "whois"]
+                    "enum": [
+                      "rdap",
+                      "whois"
+                    ]
                   },
                   "server": {
-                    "type": ["string", "null"]
+                    "type": [
+                      "string",
+                      "null"
+                    ]
                   }
                 }
               },
@@ -884,7 +1147,10 @@
             "anyOf": [
               {
                 "type": "object",
-                "required": ["code", "message"],
+                "required": [
+                  "code",
+                  "message"
+                ],
                 "properties": {
                   "code": {
                     "type": "string"
@@ -903,7 +1169,10 @@
             "type": "array",
             "items": {
               "type": "object",
-              "required": ["code", "message"],
+              "required": [
+                "code",
+                "message"
+              ],
               "properties": {
                 "code": {
                   "type": "string"
@@ -920,7 +1189,12 @@
           },
           "cache": {
             "type": "object",
-            "required": ["enabled", "hit", "storedAt", "expiresAt"],
+            "required": [
+              "enabled",
+              "hit",
+              "storedAt",
+              "expiresAt"
+            ],
             "properties": {
               "enabled": {
                 "type": "boolean"
@@ -929,18 +1203,26 @@
                 "type": "boolean"
               },
               "storedAt": {
-                "type": ["string", "null"],
+                "type": [
+                  "string",
+                  "null"
+                ],
                 "format": "date-time"
               },
               "expiresAt": {
-                "type": ["string", "null"],
+                "type": [
+                  "string",
+                  "null"
+                ],
                 "format": "date-time"
               }
             }
           },
           "timing": {
             "type": "object",
-            "required": ["totalMs"],
+            "required": [
+              "totalMs"
+            ],
             "properties": {
               "totalMs": {
                 "type": "number",

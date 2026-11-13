@@ -4,6 +4,8 @@
 
 新调用方使用 `GET /api/v2/lookup?query=example.com`，需要原文时加 `includeRaw=true`。完整参数、字段、错误码及域名/IP/ASN 示例见 OpenAPI 和文档页面。
 
+两个版本的查询响应（包括错误响应）均带 `X-App-Version`，值为构建时 Git 提交号的前 12 位，便于确认命中的部署。无 Git 信息且未指定构建变量 `APP_VERSION` 时显示 `development`。
+
 ## 兼容约定
 
 - `/api/lookup` 保留旧字段和默认原文，并新增 `outcome`、`queryType`、归一化查询及缓存元数据。旧版 `time` 单位仍为秒。
@@ -42,7 +44,8 @@
 
 - 注册国家不等同于实际地理位置；本服务没有地理定位数据源。
 - RDAP 描述中提及的 ASN 与 WHOIS origin AS 单独返回；没有接入 BGP，`bgpConfirmedASNs=[]`。
-- 注册联系人、技术联系人、滥用联系人按 RDAP roles 区分，包括嵌套实体。
+- 注册联系人、技术联系人、滥用联系人按 RDAP roles 区分，包括嵌套实体；过滤全空联系人。ARIN WHOIS 按资源、组织和联系人记录分别解析，并合并同一角色下重复的联系人 handle。
+- ASN/IP 的注册日期、更新时间和 handle 取自查询对象本身。组织记录的日期保留在原文中，不会替代 ASN/IP 日期；对象日期未提供时返回 null。
 - 价格是后缀通用比价，不能用于判断具体域名是否能购买，也不等于当前注册商续费价。`amountCny` 对应 `*_cny`，`effectiveAmountCny` 对应 `*_eff_cny`；换算汇率及折后公式未提供时为 null。计费年限、优惠码内容和新用户条件未核实时保持未知。
 - `premiumChecked=false`，v2 `isPremium=null`；旧 `isPremium` 启发式字段不代表已核实溢价。
 

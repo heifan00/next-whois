@@ -22,6 +22,10 @@ export function isoDate(value: unknown): string | null {
   return Number.isFinite(time) ? new Date(time).toISOString() : null;
 }
 
+export function hasContactData(contact: RegistrationContact): boolean {
+  return Object.values(contact).some((value) => nullableText(value) !== null);
+}
+
 export function parseContacts(entities: any[] = []): RegistrationContacts {
   const contacts: RegistrationContacts = {
     registrant: [],
@@ -55,7 +59,8 @@ export function parseContacts(entities: any[] = []): RegistrationContacts {
           nullableText(address?.[3]?.[6]),
       };
       for (const role of ["registrant", "technical", "abuse"] as const) {
-        if (entity.roles?.includes(role)) contacts[role].push(contact);
+        if (entity.roles?.includes(role) && hasContactData(contact))
+          contacts[role].push(contact);
       }
       if (Array.isArray(entity.entities)) visit(entity.entities, depth + 1);
     }

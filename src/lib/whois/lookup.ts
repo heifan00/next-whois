@@ -86,8 +86,8 @@ export async function lookupWhoisWithCache(
   const start = performance.now();
   const parsed = normalizeQuery(input);
   if (!parsed) return lookupWhois(input);
-  // New namespace prevents previously cached false successes from surviving the fix.
-  const key = `whois:v2:${parsed.queryType}:${parsed.normalizedQuery}`;
+  // New namespace discards cached results parsed before ARIN record scoping.
+  const key = `whois:v3:${parsed.queryType}:${parsed.normalizedQuery}`;
   const enabled = !!redis && REDIS_CACHE_TTL > 0;
   const emptyCache = { enabled, hit: false, storedAt: null, expiresAt: null };
   if (enabled) {
@@ -211,6 +211,7 @@ export async function lookupWhois(input: string): Promise<WhoisResult> {
     const result = await analyzeWhois(
       response.text,
       parsed.queryType === "domain" ? domain : undefined,
+      parsed,
     );
     result.domain ||= domain;
     if (response.server) result.whoisServer = response.server;

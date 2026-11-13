@@ -13,6 +13,7 @@ export function createLookupHandler(version: 1 | 2) {
       status = outcomeHttpStatus(data.outcome, data.errorCode),
     ) => {
       res.setHeader("Cache-Control", "no-store");
+      res.setHeader("X-App-Version", process.env.APP_VERSION || "development");
       if (data.retryAfterSeconds)
         res.setHeader("Retry-After", String(data.retryAfterSeconds));
       return res

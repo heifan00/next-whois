@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 import { sourceLoader } from "./helpers/load-source.mjs";
+
+const arinAsn = readFileSync(
+  new URL("./fixtures/arin-as13335.txt", import.meta.url),
+  "utf8",
+).replace(/\r\n/g, "\n");
 
 function lookupHarness({
   rdap,
@@ -442,4 +448,129 @@ test("WHOIS success requires the requested identity or a containing network", ()
     }),
     "ok",
   );
+});
+
+test("ARIN ASN dates, handle and contacts belong to their own records", async () => {
+  const client = lookupHarness({
+    networkWhois: { text: arinAsn, server: "whois.arin.net" },
+  });
+  const response = await client.lookupWhois("AS13335");
+  const data = client
+    .load("src/lib/whois/api_response.ts")
+    .toLookupV2(response).data;
+  assert.equal(data.registrationDate, "2010-07-14T00:00:00.000Z");
+  assert.equal(data.updatedDate, "2017-02-17T00:00:00.000Z");
+  assert.equal(data.handle, "AS13335");
+  assert.equal(data.registeredOrganization, "Cloudflare, Inc.");
+  assert.equal(data.contacts.registrant[0].handle, "CLOUD14");
+  assert.equal(data.contacts.technical.length, 1);
+  assert.equal(data.contacts.technical[0].email, "rir@cloudflare.com");
+  assert.equal(data.contacts.abuse.length, 1);
+  assert.equal(data.contacts.abuse[0].handle, "ABUSE2916-ARIN");
+  assert.equal(data.contacts.abuse[0].email, "abuse@cloudflare.com");
+  assert.equal(response.result.rawWhoisContent, arinAsn);
+});
+
+test("ARIN missing ASN dates stay null instead of borrowing organization dates", async () => {
+  const text = arinAsn
+    .replace("RegDate:        2010-07-14\n", "")
+    .replace("Updated:        2017-02-17\n", "");
+  const client = lookupHarness({
+    networkWhois: { text, server: "whois.arin.net" },
+  });
+  const data = client
+    .load("src/lib/whois/api_response.ts")
+    .toLookupV2(await client.lookupWhois("AS13335")).data;
+  assert.equal(data.registrationDate, null);
+  assert.equal(data.updatedDate, null);
+});
+
+test("ARIN selects the queried ASN even when another object appears last", async () => {
+  const text =
+    arinAsn +
+    "\n\nASNumber: 64500\nASName: OTHER\nASHandle: AS64500\nRegDate: 2024-01-01\nUpdated: 2025-01-01\n";
+  const client = lookupHarness({
+    networkWhois: { text, server: "whois.arin.net" },
+  });
+  const response = await client.lookupWhois("AS13335");
+  assert.equal(response.result.asNumber, 13335);
+  assert.equal(response.result.creationDate, "2010-07-14T00:00:00.000Z");
+});
+
+test("ARIN IP registration dates are independent of the related organization", async () => {
+  const text =
+    "NetRange: 8.8.8.0 - 8.8.8.255\nCIDR: 8.8.8.0/24\nNetName: TEST-NET\nNetHandle: NET-8-8-8-0-1\nRegDate: 2009-09-08\nUpdated: 2023-12-28\n\nOrgName: Example Network\nOrgId: TEST\nRegDate: 2000-01-01\nUpdated: 2024-12-01\nCountry: US";
+  const client = lookupHarness({
+    networkWhois: { text, server: "whois.arin.net" },
+  });
+  const data = client
+    .load("src/lib/whois/api_response.ts")
+    .toLookupV2(await client.lookupWhois("8.8.8.8")).data;
+  assert.equal(data.registrationDate, "2009-09-08T00:00:00.000Z");
+  assert.equal(data.updatedDate, "2023-12-28T00:00:00.000Z");
+  assert.equal(data.handle, "NET-8-8-8-0-1");
+});
+
+test("ARIN chooses the most specific matching network and its organization", async () => {
+  const text =
+    "NetRange: 8.0.0.0 - 8.255.255.255\nNetHandle: NET-8-0-0-0-1\nOrgId: PARENT\nRegDate: 1992-01-01\n\nOrgName: Parent Network\nOrgId: PARENT\nRegDate: 1989-01-01\n\nNetRange: 8.8.8.0 - 8.8.8.255\nNetHandle: NET-8-8-8-0-1\nOrgId: CHILD\nRegDate: 2009-09-08\n\nOrgName: Child Network\nOrgId: CHILD\nRegDate: 2000-01-01";
+  const client = lookupHarness({
+    networkWhois: { text, server: "whois.arin.net" },
+  });
+  const result = await client.lookupWhois("8.8.8.8");
+  assert.equal(result.result.handle, "NET-8-8-8-0-1");
+  assert.equal(result.result.registrantOrganization, "Child Network");
+  assert.equal(result.result.creationDate, "2009-09-08T00:00:00.000Z");
+});
+
+test("empty RDAP contacts are omitted while nested and handle-only contacts survive", () => {
+  const { parseContacts } = sourceLoader()("src/lib/whois/registration.ts");
+  const contacts = parseContacts([
+    {
+      roles: ["abuse"],
+      vcardArray: ["vcard", [["fn", {}, "text", "Unknown"]]],
+      entities: [{ roles: ["technical"], handle: "TECH-1" }],
+    },
+    {
+      roles: ["abuse"],
+      vcardArray: ["vcard", [["email", {}, "text", "abuse@example.net"]]],
+    },
+  ]);
+  assert.equal(contacts.abuse.length, 1);
+  assert.equal(contacts.abuse[0].email, "abuse@example.net");
+  assert.equal(contacts.technical[0].handle, "TECH-1");
+});
+
+test("API responses identify the deployed revision on both success and errors", async () => {
+  const previous = process.env.APP_VERSION;
+  process.env.APP_VERSION = "123456abcdef";
+  try {
+    const load = sourceLoader({
+      "./lookup": {
+        lookupWhoisWithCache: async () => ({
+          status: true,
+          outcome: "ok",
+          time: 0,
+        }),
+      },
+    });
+    const { createLookupHandler } = load("src/lib/whois/api_handler.ts");
+    for (const version of [1, 2]) {
+      for (const query of [{ query: "example.com" }, {}]) {
+        const headers = {};
+        const response = {
+          setHeader: (key, value) => {
+            headers[key] = value;
+          },
+          status: () => response,
+          json: () => {},
+        };
+        await createLookupHandler(version)({ method: "GET", query }, response);
+        assert.equal(headers["X-App-Version"], "123456abcdef");
+      }
+    }
+  } finally {
+    if (previous === undefined) delete process.env.APP_VERSION;
+    else process.env.APP_VERSION = previous;
+  }
 });

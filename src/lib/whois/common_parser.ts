@@ -10,6 +10,8 @@ import { getDomainPricing } from "@/lib/pricing/client";
 import { supplementRegistrarExpiration } from "./registrar_rdap";
 import { parseCidr, rangeToCidrs } from "./address";
 import { isoDate } from "./registration";
+import { scopeArinWhois } from "./arin_parser";
+import type { ParsedQuery } from "./query";
 
 function analyzeDomainStatus(status: string): DomainStatusProps {
   const segments = status.split(" ");
@@ -79,8 +81,10 @@ export async function applyParams(result: WhoisAnalyzeResult) {
 export async function analyzeWhois(
   data: string,
   query?: string,
+  lookupQuery?: ParsedQuery,
 ): Promise<WhoisAnalyzeResult> {
-  const lines = data
+  const arin = query ? null : scopeArinWhois(data, lookupQuery);
+  const lines = (arin?.text || data)
     .split("\n")
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
@@ -90,6 +94,13 @@ export async function analyzeWhois(
     status: [],
     nameServers: [],
     rawWhoisContent: data,
+    ...(arin
+      ? {
+          handle: arin.handle,
+          contacts: arin.contacts,
+          description: arin.description,
+        }
+      : {}),
   };
 
   for (let i = 0; i < lines.length; i++) {

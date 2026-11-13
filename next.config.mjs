@@ -1,8 +1,25 @@
 /** @type {import('next').NextConfig} */
 
 import setupPWA from "next-pwa";
+import { execFileSync } from "node:child_process";
+
+function getAppVersion() {
+  const configured = process.env.APP_VERSION;
+  if (configured && /^[a-f\d]{7,40}$/i.test(configured))
+    return configured.slice(0, 12);
+  try {
+    return execFileSync("git", ["rev-parse", "--short=12", "HEAD"], {
+      cwd: import.meta.dirname,
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch {
+    return "development";
+  }
+}
 
 const nextConfig = {
+  env: { APP_VERSION: getAppVersion() },
   reactStrictMode: true,
   images: {
     domains: [],

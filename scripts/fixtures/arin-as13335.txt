@@ -1,0 +1,43 @@
+# ARIN WHOIS fields observed on 2026-11-13. Terms and unrelated NOC fields omitted.
+ASNumber:       13335
+ASName:         CLOUDFLARENET
+ASHandle:       AS13335
+RegDate:        2010-07-14
+Updated:        2017-02-17
+Comment:        All Cloudflare abuse reporting can be done via https://www.cloudflare.com/abuse
+Ref:            https://rdap.arin.net/registry/autnum/13335
+
+OrgName:        Cloudflare, Inc.
+OrgId:          CLOUD14
+Address:        101 Townsend Street
+City:           San Francisco
+StateProv:      CA
+PostalCode:     94107
+Country:        US
+RegDate:        2010-07-09
+Updated:        2024-11-25
+Ref:            https://rdap.arin.net/registry/entity/CLOUD14
+
+OrgAbuseHandle: ABUSE2916-ARIN
+OrgAbuseName:   Abuse
+OrgAbusePhone:  +1-650-319-8930
+OrgAbuseEmail:  abuse@cloudflare.com
+OrgAbuseRef:    https://rdap.arin.net/registry/entity/ABUSE2916-ARIN
+
+OrgTechHandle: ADMIN2521-ARIN
+OrgTechName:   Admin
+OrgTechPhone:  +1-650-319-8930
+OrgTechEmail:  rir@cloudflare.com
+OrgTechRef:    https://rdap.arin.net/registry/entity/ADMIN2521-ARIN
+
+RAbuseHandle: ABUSE2916-ARIN
+RAbuseName:   Abuse
+RAbusePhone:  +1-650-319-8930
+RAbuseEmail:  abuse@cloudflare.com
+RAbuseRef:    https://rdap.arin.net/registry/entity/ABUSE2916-ARIN
+
+RTechHandle: ADMIN2521-ARIN
+RTechName:   Admin
+RTechPhone:  +1-650-319-8930
+RTechEmail:  rir@cloudflare.com
+RTechRef:    https://rdap.arin.net/registry/entity/ADMIN2521-ARIN
