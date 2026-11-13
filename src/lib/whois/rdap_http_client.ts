@@ -11,6 +11,11 @@ export type RdapHttpResponse = {
 
 const DEFAULT_RDAP_TIMEOUT_MS = 10000;
 const MAX_REDIRECTS = 3;
+type RdapRequestOptions = {
+  sameOriginRedirects?: boolean;
+  deadline?: number;
+  maxRedirects?: number;
+};
 
 export function getRdapRequestFamily(): 4 | 6 | undefined {
   const family = (process.env.RDAP_DNS_FAMILY || "4").trim().toLowerCase();
@@ -36,13 +41,22 @@ function getRdapTimeoutMs(): number {
 export function fetchRdapText(
   url: string,
   headers: Record<string, string>,
-  options: { sameOriginRedirects?: boolean } = {},
+  options: RdapRequestOptions = {},
   redirectCount = 0,
 ): Promise<RdapHttpResponse> {
   return new Promise((resolve, reject) => {
     const target = new URL(url);
+    if (
+      !["http:", "https:"].includes(target.protocol) ||
+      target.username ||
+      target.password
+    )
+      return reject(new Error("Unsupported RDAP URL"));
+    const deadline = options.deadline ?? Date.now() + getRdapTimeoutMs();
+    if (deadline <= Date.now())
+      return reject(new Error("RDAP request timed out"));
     const client = target.protocol === "http:" ? http : https;
-    const timeoutMs = getRdapTimeoutMs();
+    const timeoutMs = Math.min(getRdapTimeoutMs(), deadline - Date.now());
     const family = getRdapRequestFamily();
 
     const request = client.request(
@@ -54,9 +68,15 @@ export function fetchRdapText(
       },
       (response) => {
         let body = "";
+        let size = 0;
 
         response.setEncoding("utf8");
         response.on("data", (chunk) => {
+          size += Buffer.byteLength(chunk);
+          if (size > 2 * 1024 * 1024) {
+            request.destroy(new Error("RDAP response exceeds 2 MiB"));
+            return;
+          }
           body += chunk;
         });
         response.on("end", () => {
@@ -67,7 +87,7 @@ export function fetchRdapText(
             status >= 300 &&
             status < 400 &&
             location &&
-            redirectCount < MAX_REDIRECTS &&
+            redirectCount < (options.maxRedirects ?? MAX_REDIRECTS) &&
             URL.canParse(location, target)
           ) {
             const redirect = new URL(location, target);
@@ -81,7 +101,7 @@ export function fetchRdapText(
                 fetchRdapText(
                   redirect.href,
                   headers,
-                  options,
+                  { ...options, deadline },
                   redirectCount + 1,
                 ),
               );
@@ -99,12 +119,16 @@ export function fetchRdapText(
       },
     );
 
-    request.setTimeout(timeoutMs, () => {
+    const timer = setTimeout(() => {
       request.destroy(
         new Error(`RDAP request timed out after ${timeoutMs}ms: ${url}`),
       );
+    }, timeoutMs);
+    request.on("close", () => clearTimeout(timer));
+    request.on("error", (error) => {
+      clearTimeout(timer);
+      reject(error);
     });
-    request.on("error", reject);
     request.end();
   });
 }
@@ -112,8 +136,9 @@ export function fetchRdapText(
 export async function fetchRdapJson<T>(
   url: string,
   headers: Record<string, string>,
+  options: RdapRequestOptions = {},
 ): Promise<T> {
-  const response = await fetchRdapText(url, headers);
+  const response = await fetchRdapText(url, headers, options);
 
   if (response.status < 200 || response.status >= 300) {
     throw new Error(

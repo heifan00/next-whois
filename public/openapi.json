@@ -1,0 +1,977 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "94.cx Registration Lookup API",
+    "version": "2.0.0",
+    "description": "Public application endpoint with no built-in API key, quota or concurrency enforcement. Deployment gateways and upstream registries may impose limits. See /api-docs for cache freshness, source limitations and legacy compatibility."
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "security": [],
+  "paths": {
+    "/api/v2/lookup": {
+      "get": {
+        "operationId": "lookupRegistration",
+        "summary": "Look up domain, IP, ASN or CIDR registration data",
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": true,
+            "description": "Exactly one domain, IPv4, IPv6, ASN (1–4294967295, optional AS), or CIDR. URLs are rejected. IDNs use Punycode; subdomains resolve to their registrable domain; CIDR host bits are cleared.",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512
+            },
+            "examples": {
+              "domain": {
+                "value": "example.com"
+              },
+              "ip": {
+                "value": "1.1.1.1"
+              },
+              "asn": {
+                "value": "AS13335"
+              },
+              "ipv6": {
+                "value": "2001:4860:4860::8888"
+              },
+              "cidr": {
+                "value": "1.1.1.0/24"
+              },
+              "idn": {
+                "value": "中国.cn"
+              }
+            }
+          },
+          {
+            "name": "includeRaw",
+            "in": "query",
+            "description": "Opt into 64 KiB of raw data. Complete RDAP is an object; truncated RDAP is text in rdapPreview.",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ok, partial or not_found; inspect outcome.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LookupResponse"
+                },
+                "examples": {
+                  "domain": {
+                    "summary": "Illustrative response, not a live quote",
+                    "value": {
+                      "outcome": "ok",
+                      "source": {
+                        "protocol": "rdap",
+                        "server": null
+                      },
+                      "error": null,
+                      "warnings": [],
+                      "queriedAt": "2026-11-13T00:00:00.000Z",
+                      "cache": {
+                        "enabled": false,
+                        "hit": false,
+                        "storedAt": null,
+                        "expiresAt": null
+                      },
+                      "timing": {
+                        "totalMs": 100
+                      },
+                      "pricing": {
+                        "scope": "tld",
+                        "tld": "com",
+                        "domainSpecific": false,
+                        "registrationAvailability": null,
+                        "offers": []
+                      },
+                      "query": "example.com",
+                      "normalizedQuery": "example.com",
+                      "queryType": "domain",
+                      "data": {
+                        "domain": "example.com",
+                        "registrar": null,
+                        "registrarUrl": null,
+                        "ianaId": null,
+                        "creationDate": null,
+                        "updatedDate": null,
+                        "expirationDate": null,
+                        "expirationDateSource": null,
+                        "domainAge": null,
+                        "remainingDays": null,
+                        "status": [],
+                        "nameServers": [],
+                        "registrantOrganization": null,
+                        "registeredCountry": null,
+                        "dnssec": null,
+                        "contacts": {
+                          "registrant": [],
+                          "technical": [],
+                          "abuse": []
+                        },
+                        "moz": {
+                          "domainAuthority": null,
+                          "pageAuthority": null,
+                          "spamScore": null
+                        }
+                      }
+                    }
+                  },
+                  "ip": {
+                    "summary": "Illustrative IP record",
+                    "value": {
+                      "outcome": "ok",
+                      "source": {
+                        "protocol": "rdap",
+                        "server": null
+                      },
+                      "error": null,
+                      "warnings": [],
+                      "queriedAt": "2026-11-13T00:00:00.000Z",
+                      "cache": {
+                        "enabled": false,
+                        "hit": false,
+                        "storedAt": null,
+                        "expiresAt": null
+                      },
+                      "timing": {
+                        "totalMs": 100
+                      },
+                      "pricing": null,
+                      "query": "1.1.1.1",
+                      "normalizedQuery": "1.1.1.1",
+                      "queryType": "ipv4",
+                      "data": {
+                        "handle": null,
+                        "registeredOrganization": "APNIC Research and Development",
+                        "registeredCountry": "AU",
+                        "geolocation": null,
+                        "registrationDate": null,
+                        "updatedDate": null,
+                        "contacts": {
+                          "registrant": [],
+                          "technical": [],
+                          "abuse": []
+                        },
+                        "description": [],
+                        "cidrs": ["1.1.1.0/24"],
+                        "startAddress": "1.1.1.0",
+                        "endAddress": "1.1.1.255",
+                        "netRange": "1.1.1.0 - 1.1.1.255",
+                        "netName": "APNIC-LABS",
+                        "netType": null,
+                        "routing": {
+                          "mentionedASNs": ["AS13335"],
+                          "mentionSource": "rdap.remarks",
+                          "whoisOriginAS": null,
+                          "bgpConfirmedASNs": [],
+                          "bgpSource": null
+                        }
+                      }
+                    }
+                  },
+                  "asn": {
+                    "summary": "Illustrative final ASN object",
+                    "value": {
+                      "outcome": "ok",
+                      "source": {
+                        "protocol": "rdap",
+                        "server": null
+                      },
+                      "error": null,
+                      "warnings": [],
+                      "queriedAt": "2026-11-13T00:00:00.000Z",
+                      "cache": {
+                        "enabled": false,
+                        "hit": false,
+                        "storedAt": null,
+                        "expiresAt": null
+                      },
+                      "timing": {
+                        "totalMs": 100
+                      },
+                      "pricing": null,
+                      "query": "AS13335",
+                      "normalizedQuery": "AS13335",
+                      "queryType": "asn",
+                      "data": {
+                        "handle": null,
+                        "registeredOrganization": "Cloudflare, Inc.",
+                        "registeredCountry": null,
+                        "geolocation": null,
+                        "registrationDate": null,
+                        "updatedDate": null,
+                        "contacts": {
+                          "registrant": [],
+                          "technical": [],
+                          "abuse": []
+                        },
+                        "description": [],
+                        "asNumber": 13335,
+                        "asName": "CLOUDFLARENET",
+                        "allocationRegistry": null
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "INVALID_QUERY or INVALID_PARAMETER.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LookupResponse"
+                }
+              }
+            }
+          },
+          "405": {
+            "description": "METHOD_NOT_ALLOWED. Only GET is supported.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LookupResponse"
+                }
+              }
+            },
+            "headers": {
+              "Allow": {
+                "schema": {
+                  "const": "GET"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "UPSTREAM_RATE_LIMITED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LookupResponse"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "description": "Seconds to wait, only when known from the upstream."
+              }
+            }
+          },
+          "502": {
+            "description": "UPSTREAM_ERROR or INCOMPLETE_RDAP_OBJECT.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LookupResponse"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "UPSTREAM_TIMEOUT.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LookupResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Contact": {
+        "type": "object",
+        "required": [
+          "handle",
+          "name",
+          "organization",
+          "email",
+          "phone",
+          "country"
+        ],
+        "properties": {
+          "handle": {
+            "type": ["string", "null"]
+          },
+          "name": {
+            "type": ["string", "null"]
+          },
+          "organization": {
+            "type": ["string", "null"]
+          },
+          "email": {
+            "type": ["string", "null"]
+          },
+          "phone": {
+            "type": ["string", "null"]
+          },
+          "country": {
+            "type": ["string", "null"]
+          }
+        }
+      },
+      "Contacts": {
+        "type": "object",
+        "required": ["registrant", "technical", "abuse"],
+        "properties": {
+          "registrant": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Contact"
+            }
+          },
+          "technical": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Contact"
+            }
+          },
+          "abuse": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Contact"
+            }
+          }
+        }
+      },
+      "DomainData": {
+        "type": "object",
+        "required": [
+          "domain",
+          "registrar",
+          "registrarUrl",
+          "ianaId",
+          "creationDate",
+          "updatedDate",
+          "expirationDate",
+          "expirationDateSource",
+          "domainAge",
+          "remainingDays",
+          "status",
+          "nameServers",
+          "registrantOrganization",
+          "registeredCountry",
+          "dnssec",
+          "contacts",
+          "moz"
+        ],
+        "properties": {
+          "domain": {
+            "type": ["string", "null"]
+          },
+          "registrar": {
+            "type": ["string", "null"]
+          },
+          "registrarUrl": {
+            "type": ["string", "null"]
+          },
+          "ianaId": {
+            "type": ["string", "null"]
+          },
+          "creationDate": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "updatedDate": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "expirationDate": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "expirationDateSource": {
+            "type": ["string", "null"]
+          },
+          "domainAge": {
+            "type": ["number", "null"],
+            "minimum": 0,
+            "description": "Whole years."
+          },
+          "remainingDays": {
+            "type": ["number", "null"],
+            "minimum": 0
+          },
+          "status": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["status", "url"],
+              "properties": {
+                "status": {
+                  "type": ["string", "null"]
+                },
+                "url": {
+                  "type": ["string", "null"]
+                }
+              }
+            }
+          },
+          "nameServers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "registrantOrganization": {
+            "type": ["string", "null"]
+          },
+          "registeredCountry": {
+            "type": ["string", "null"]
+          },
+          "dnssec": {
+            "type": ["string", "null"]
+          },
+          "contacts": {
+            "$ref": "#/components/schemas/Contacts"
+          },
+          "moz": {
+            "type": "object",
+            "required": ["domainAuthority", "pageAuthority", "spamScore"],
+            "properties": {
+              "domainAuthority": {
+                "type": ["number", "null"],
+                "minimum": 0
+              },
+              "pageAuthority": {
+                "type": ["number", "null"],
+                "minimum": 0
+              },
+              "spamScore": {
+                "type": ["number", "null"],
+                "minimum": 0
+              }
+            }
+          }
+        }
+      },
+      "IpData": {
+        "type": "object",
+        "required": [
+          "handle",
+          "registeredOrganization",
+          "registeredCountry",
+          "geolocation",
+          "registrationDate",
+          "updatedDate",
+          "contacts",
+          "description",
+          "cidrs",
+          "startAddress",
+          "endAddress",
+          "netRange",
+          "netName",
+          "netType",
+          "routing"
+        ],
+        "properties": {
+          "handle": {
+            "type": ["string", "null"]
+          },
+          "registeredOrganization": {
+            "type": ["string", "null"]
+          },
+          "registeredCountry": {
+            "type": ["string", "null"],
+            "description": "Registration country, not server geolocation."
+          },
+          "geolocation": {
+            "type": "null"
+          },
+          "registrationDate": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "updatedDate": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "contacts": {
+            "$ref": "#/components/schemas/Contacts"
+          },
+          "description": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "cidrs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Canonical IPv4 or IPv6 CIDRs."
+          },
+          "startAddress": {
+            "type": ["string", "null"]
+          },
+          "endAddress": {
+            "type": ["string", "null"]
+          },
+          "netRange": {
+            "type": ["string", "null"]
+          },
+          "netName": {
+            "type": ["string", "null"]
+          },
+          "netType": {
+            "type": ["string", "null"]
+          },
+          "routing": {
+            "type": "object",
+            "required": [
+              "mentionedASNs",
+              "mentionSource",
+              "whoisOriginAS",
+              "bgpConfirmedASNs",
+              "bgpSource"
+            ],
+            "properties": {
+              "mentionedASNs": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "mentionSource": {
+                "type": ["string", "null"]
+              },
+              "whoisOriginAS": {
+                "type": ["string", "null"]
+              },
+              "bgpConfirmedASNs": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "bgpSource": {
+                "type": ["string", "null"]
+              }
+            }
+          }
+        }
+      },
+      "AsnData": {
+        "type": "object",
+        "required": [
+          "handle",
+          "registeredOrganization",
+          "registeredCountry",
+          "geolocation",
+          "registrationDate",
+          "updatedDate",
+          "contacts",
+          "description",
+          "asNumber",
+          "asName",
+          "allocationRegistry"
+        ],
+        "properties": {
+          "handle": {
+            "type": ["string", "null"]
+          },
+          "registeredOrganization": {
+            "type": ["string", "null"]
+          },
+          "registeredCountry": {
+            "type": ["string", "null"],
+            "description": "Registration country, not server geolocation."
+          },
+          "geolocation": {
+            "type": "null"
+          },
+          "registrationDate": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "updatedDate": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "contacts": {
+            "$ref": "#/components/schemas/Contacts"
+          },
+          "description": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "asNumber": {
+            "type": ["integer", "null"],
+            "minimum": 1,
+            "maximum": 4294967295
+          },
+          "asName": {
+            "type": ["string", "null"]
+          },
+          "allocationRegistry": {
+            "type": ["string", "null"]
+          }
+        }
+      },
+      "Offer": {
+        "type": "object",
+        "required": [
+          "operation",
+          "registrar",
+          "registrarUrl",
+          "amount",
+          "currency",
+          "amountCny",
+          "effectiveAmountCny",
+          "conversion",
+          "billingPeriodYears",
+          "premiumChecked",
+          "isPremium",
+          "promotion",
+          "updatedAt",
+          "sourceUpdatedAtText",
+          "sourceTimezone",
+          "source",
+          "sourceUrl"
+        ],
+        "properties": {
+          "operation": {
+            "enum": ["register", "renew", "transfer"]
+          },
+          "registrar": {
+            "type": ["string", "null"]
+          },
+          "registrarUrl": {
+            "type": ["string", "null"]
+          },
+          "amount": {
+            "type": ["number", "null"],
+            "minimum": 0
+          },
+          "currency": {
+            "type": ["string", "null"]
+          },
+          "amountCny": {
+            "type": ["number", "null"],
+            "minimum": 0
+          },
+          "effectiveAmountCny": {
+            "type": ["number", "null"],
+            "minimum": 0
+          },
+          "conversion": {
+            "type": "object",
+            "required": ["source", "exchangeRate", "effectivePriceFormula"],
+            "properties": {
+              "source": {
+                "const": "nazhumi"
+              },
+              "exchangeRate": {
+                "type": "null"
+              },
+              "effectivePriceFormula": {
+                "type": "null"
+              }
+            }
+          },
+          "billingPeriodYears": {
+            "type": "null",
+            "description": "Unknown; do not assume one year."
+          },
+          "premiumChecked": {
+            "const": false
+          },
+          "isPremium": {
+            "type": "null"
+          },
+          "promotion": {
+            "type": "object",
+            "required": [
+              "codeRequired",
+              "code",
+              "newCustomersOnly",
+              "restrictions"
+            ],
+            "properties": {
+              "codeRequired": {
+                "type": ["boolean", "null"]
+              },
+              "code": {
+                "type": "null"
+              },
+              "newCustomersOnly": {
+                "type": "null"
+              },
+              "restrictions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "No supplied conditions does not mean unrestricted."
+              }
+            }
+          },
+          "updatedAt": {
+            "type": ["string", "null"],
+            "format": "date-time"
+          },
+          "sourceUpdatedAtText": {
+            "type": ["string", "null"]
+          },
+          "sourceTimezone": {
+            "type": "null"
+          },
+          "source": {
+            "const": "https://www.nazhumi.com"
+          },
+          "sourceUrl": {
+            "type": ["string", "null"]
+          }
+        }
+      },
+      "Pricing": {
+        "type": "object",
+        "required": [
+          "scope",
+          "tld",
+          "domainSpecific",
+          "registrationAvailability",
+          "offers"
+        ],
+        "properties": {
+          "scope": {
+            "const": "tld"
+          },
+          "tld": {
+            "type": ["string", "null"]
+          },
+          "domainSpecific": {
+            "const": false
+          },
+          "registrationAvailability": {
+            "type": "null"
+          },
+          "offers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Offer"
+            }
+          }
+        }
+      },
+      "Raw": {
+        "type": "object",
+        "required": [
+          "whois",
+          "rdap",
+          "rdapPreview",
+          "truncated",
+          "originalBytes",
+          "limitBytes"
+        ],
+        "properties": {
+          "whois": {
+            "type": ["string", "null"]
+          },
+          "rdap": {
+            "type": ["object", "null"],
+            "additionalProperties": true
+          },
+          "rdapPreview": {
+            "type": ["string", "null"]
+          },
+          "truncated": {
+            "type": "boolean"
+          },
+          "originalBytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "limitBytes": {
+            "const": 65536
+          }
+        }
+      },
+      "LookupResponse": {
+        "type": "object",
+        "required": [
+          "query",
+          "normalizedQuery",
+          "queryType",
+          "outcome",
+          "source",
+          "data",
+          "error",
+          "warnings",
+          "queriedAt",
+          "cache",
+          "timing",
+          "pricing"
+        ],
+        "properties": {
+          "query": {
+            "type": "string"
+          },
+          "normalizedQuery": {
+            "type": ["string", "null"]
+          },
+          "queryType": {
+            "enum": ["domain", "ipv4", "ipv6", "asn", "cidr", null]
+          },
+          "outcome": {
+            "enum": [
+              "ok",
+              "partial",
+              "invalid_input",
+              "not_found",
+              "upstream_error",
+              "rate_limited"
+            ]
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "object",
+                "required": ["protocol", "server"],
+                "properties": {
+                  "protocol": {
+                    "enum": ["rdap", "whois"]
+                  },
+                  "server": {
+                    "type": ["string", "null"]
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "data": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DomainData"
+              },
+              {
+                "$ref": "#/components/schemas/IpData"
+              },
+              {
+                "$ref": "#/components/schemas/AsnData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "object",
+                "required": ["code", "message"],
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["code", "message"],
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "queriedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "cache": {
+            "type": "object",
+            "required": ["enabled", "hit", "storedAt", "expiresAt"],
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "hit": {
+                "type": "boolean"
+              },
+              "storedAt": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              },
+              "expiresAt": {
+                "type": ["string", "null"],
+                "format": "date-time"
+              }
+            }
+          },
+          "timing": {
+            "type": "object",
+            "required": ["totalMs"],
+            "properties": {
+              "totalMs": {
+                "type": "number",
+                "minimum": 0
+              }
+            }
+          },
+          "pricing": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Pricing"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "raw": {
+            "$ref": "#/components/schemas/Raw"
+          },
+          "retryAfterSeconds": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "description": "Use queryType to select the data shape and outcome to determine success. not_found never guarantees domain availability."
+      }
+    }
+  },
+  "externalDocs": {
+    "url": "/api-docs",
+    "description": "Integration and compatibility guide"
+  }
+}

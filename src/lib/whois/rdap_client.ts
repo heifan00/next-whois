@@ -1,4 +1,3 @@
-import { domain, ip, autnum } from "node-rdap";
 import type { WhoisAnalyzeResult } from "./types";
 import {
   DEFAULT_RDAP_SERVER,
@@ -10,6 +9,9 @@ import { extractDomain } from "@/lib/utils";
 import { applyParams } from "./common_parser";
 import { fetchRdapJson, fetchRdapText } from "./rdap_http_client";
 import { supplementRegistrarExpiration } from "./registrar_rdap";
+import { normalizeQuery } from "./query";
+import { lookupNetworkRdap } from "./network_rdap";
+import { parseRetryAfter } from "./lookup_policy";
 
 const IANA_RDAP_DNS_BOOTSTRAP_URL = "https://data.iana.org/rdap/dns.json";
 const REGISTRY_RDAP_SERVERS: Record<string, string> = {
@@ -29,20 +31,11 @@ export class RegistryRdapError extends Error {
     public status: number,
     public url: string,
     detail: string,
+    public retryAfterSeconds?: number,
   ) {
     super(`Registry RDAP error (${status}): ${detail}`);
     this.name = "RegistryRdapError";
   }
-}
-
-function isIPAddress(query: string): boolean {
-  const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/;
-  const ipv6Regex = /^([0-9a-fA-F]{0,4}:){1,7}[0-9a-fA-F]{0,4}$/;
-  return ipv4Regex.test(query) || ipv6Regex.test(query);
-}
-
-function isASNumber(query: string): boolean {
-  return /^AS\d+$/i.test(query) || /^\d+$/.test(query);
 }
 
 function attachRdapServer<T extends object>(data: T, rdapServer: string): T {
@@ -126,7 +119,12 @@ async function lookupRegistryRdap(
   });
 
   if (res.status < 200 || res.status >= 300) {
-    throw new RegistryRdapError(res.status, url, res.body || res.statusText);
+    throw new RegistryRdapError(
+      res.status,
+      url,
+      res.body || res.statusText,
+      parseRetryAfter(res.headers?.["retry-after"]),
+    );
   }
 
   return attachRdapServer(JSON.parse(res.body), normalizedRdapServer);
@@ -134,16 +132,10 @@ async function lookupRegistryRdap(
 
 export async function lookupRdap(query: string): Promise<any> {
   const cleanQuery = query.trim().toLowerCase();
-
-  if (isIPAddress(cleanQuery)) {
-    return attachRdapServer(await ip(cleanQuery), DEFAULT_RDAP_SERVER);
-  } else if (isASNumber(cleanQuery)) {
-    const asNumber = cleanQuery.replace(/^as/i, "");
-    return attachRdapServer(
-      await autnum(parseInt(asNumber)),
-      DEFAULT_RDAP_SERVER,
-    );
-  } else {
+  const parsed = normalizeQuery(query);
+  if (!parsed) throw new Error("Invalid query");
+  if (parsed.queryType !== "domain") return lookupNetworkRdap(parsed);
+  else {
     const domainToQuery = extractDomain(cleanQuery) || cleanQuery;
     // Keep known registries independent of bootstrap outages and stale defaults.
     const registryRdapServer = await getRegistryRdapServer(domainToQuery);
@@ -151,7 +143,7 @@ export async function lookupRdap(query: string): Promise<any> {
       return await lookupRegistryRdap(domainToQuery, registryRdapServer);
     }
 
-    return attachRdapServer(await domain(domainToQuery), DEFAULT_RDAP_SERVER);
+    throw new Error("No registry RDAP service could be discovered");
   }
 }
 
@@ -162,6 +154,7 @@ export async function convertRdapToWhoisResult(
   const result = parseRdapToWhoisResult(rdapData, originalQuery);
   if (rdapData.ldhName || rdapData.unicodeName) {
     await supplementRegistrarExpiration(result, originalQuery, rdapData.links);
+    return await applyParams(result);
   }
-  return await applyParams(result);
+  return result;
 }

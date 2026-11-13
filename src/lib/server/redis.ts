@@ -16,6 +16,10 @@ function createRedisConn(): Redis | undefined {
         port: REDIS_PORT,
         password: REDIS_PASSWORD,
         db: REDIS_DB,
+        connectTimeout: 1500,
+        commandTimeout: 1500,
+        maxRetriesPerRequest: 1,
+        enableOfflineQueue: false,
       });
     } catch (error) {
       console.error("Failed to connect to Redis:", error);
@@ -42,10 +46,8 @@ export async function setRedisValue(
   value: string,
 ): Promise<boolean> {
   if (redis) {
-    if ((await redis.set(key, value)) === "OK") {
-      if (REDIS_CACHE_TTL > 0) {
-        await redis.expire(key, REDIS_CACHE_TTL);
-      }
+    if (REDIS_CACHE_TTL <= 0) return false;
+    if ((await redis.set(key, value, "EX", REDIS_CACHE_TTL)) === "OK") {
       console.info(
         `Redis cache set for key: ${key} (value length: ${value.length}, ttl: ${REDIS_CACHE_TTL})`,
       );

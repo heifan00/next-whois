@@ -3,8 +3,15 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import test from "node:test";
 import ts from "typescript";
+import { sourceLoader } from "./helpers/load-source.mjs";
 
 const require = createRequire(import.meta.url);
+const loadSource = sourceLoader();
+const resolveDependency = (id, dependencies) =>
+  dependencies[id] ??
+  (id.startsWith("./")
+    ? loadSource(`src/lib/whois/${id.slice(2)}.ts`)
+    : require(id));
 
 function compileWhoisSource(name) {
   return ts.transpileModule(
@@ -25,7 +32,7 @@ function compileWhoisSource(name) {
 function evaluateModule(compiled, dependencies = {}) {
   const module = { exports: {} };
   new Function("require", "module", "exports", compiled)(
-    (id) => dependencies[id] ?? require(id),
+    (id) => resolveDependency(id, dependencies),
     module,
     module.exports,
   );
@@ -58,7 +65,11 @@ function loadClient(responses, bootstrap = { services: [] }) {
         if (!response) throw new Error(`Unexpected request: ${url}`);
         if (response instanceof Error) throw response;
         if (response.httpStatus)
-          return { status: response.httpStatus, body: response.body };
+          return {
+            status: response.httpStatus,
+            body: response.body,
+            headers: response.headers || {},
+          };
         if (typeof response === "string")
           return { status: 200, body: response };
         return { status: 200, body: JSON.stringify(response) };
@@ -175,7 +186,7 @@ test("Google 429 offers browser RDAP recovery without attempting retired WHOIS",
     },
   ).outputText;
   new Function("require", "module", "exports", compiledLookup)(
-    (id) => dependencies[id] ?? require(id),
+    (id) => resolveDependency(id, dependencies),
     module,
     module.exports,
   );
@@ -184,6 +195,21 @@ test("Google 429 offers browser RDAP recovery without attempting retired WHOIS",
   assert.equal(result.source, "rdap");
   assert.equal(result.available, undefined);
   assert.equal(whoisCalled, false);
+});
+
+test("domain RDAP rate limits preserve the upstream Retry-After", async () => {
+  const url = "https://pubapi.registry.google/rdap/domain/web.dev";
+  const client = loadClient({
+    [url]: {
+      httpStatus: 429,
+      body: "Too Many Requests",
+      headers: { "retry-after": "90" },
+    },
+  });
+  await assert.rejects(
+    client.lookupRdap("web.dev"),
+    (error) => error.status === 429 && error.retryAfterSeconds === 90,
+  );
 });
 
 test(".li fills the missing expiry from its registrar without replacing registry dates", async () => {

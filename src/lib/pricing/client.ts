@@ -32,6 +32,9 @@ interface NazhumiResponse {
 export interface DomainPricing extends NazhumiRegistrar {
   isPremium: boolean;
   externalLink: string;
+  premiumChecked: false;
+  priceScope: "tld";
+  billingPeriodYears: null;
 }
 
 function isPriceAmount(value: unknown): value is number {
@@ -72,6 +75,9 @@ function toDomainPricing(
 ): DomainPricing {
   return {
     ...registrar,
+    premiumChecked: false,
+    priceScope: "tld",
+    billingPeriodYears: null,
     isPremium:
       isPriceAmount(registrar.register) &&
       registrar.register > 100 &&
@@ -91,6 +97,7 @@ export async function getDomainPricingList(
 
     const url = `${NAZHUMI_API_URL}?domain=${encodeURIComponent(tld)}&order=${type}&limit=${limit}&page=1`;
     const response = await fetch(url, {
+      signal: AbortSignal.timeout(5000),
       headers: {
         Accept: "application/json",
       },

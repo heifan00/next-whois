@@ -48,7 +48,7 @@ pnpm deploy:cloudflare
 
 Google Registry 可能对 Cloudflare 共享出站 IP 返回 HTTP 429，影响 `.dev` 等后缀。页面会自动通过浏览器直接请求支持 CORS 的官方 RDAP 接口，并使用相同的解析逻辑展示结果。浏览器查询仍失败时，会显示官方查询链接。
 
-此时 `/api/lookup` 返回 HTTP 503，响应中的 `browserRdapUrl` 为官方查询地址；API 调用方可以从自己的网络请求该地址。服务端不再尝试已失效的 Google WHOIS，也不会将限流误判为域名未注册。
+此时 `/api/lookup` 返回 HTTP 429，`outcome=rate_limited`，响应中的 `browserRdapUrl` 为官方查询地址；API 调用方可以从自己的网络请求该地址。上游提供明确等待时间时会透传 `Retry-After`。服务端不再尝试已失效的 Google WHOIS，也不会将限流误判为域名未注册。
 
 ## 94.cx 路由和回退
 

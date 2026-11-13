@@ -1,9 +1,12 @@
 import type { WhoisAnalyzeResult, DomainStatusProps } from "./types";
 import moment from "moment";
+import { rangeToCidrs } from "./address";
+import { nullableText, parseContacts } from "./registration";
 
 export const DEFAULT_RDAP_SERVER = "https://rdap.org";
 
 export interface RdapResponse {
+  objectClassName?: string;
   __rdapServer?: string;
   handle?: string;
   ldhName?: string;
@@ -154,6 +157,19 @@ export function parseRdapToWhoisResult(
 ): WhoisAnalyzeResult {
   const entities = rdapData.entities || [];
   const entityData = parseRdapEntity(entities);
+  const contacts = parseContacts(entities);
+  const registrant = contacts.registrant[0];
+  const isDomain = !!(rdapData.ldhName || rdapData.unicodeName);
+  const cidrs = rangeToCidrs(
+    rdapData.startAddress || "",
+    rdapData.endAddress || "",
+  );
+  const description: string[] = (rdapData.remarks || []).flatMap(
+    (remark: any) =>
+      Array.isArray(remark.description)
+        ? remark.description.filter((line: unknown) => typeof line === "string")
+        : [],
+  );
 
   const events = rdapData.events || [];
   const creationEvent = events.find(
@@ -167,11 +183,15 @@ export function parseRdapToWhoisResult(
   const expirationDate = expirationEvent?.eventDate || "Unknown";
 
   const domainAge =
-    creationDate !== "Unknown" && Number.isFinite(Date.parse(creationDate))
+    isDomain &&
+    creationDate !== "Unknown" &&
+    Number.isFinite(Date.parse(creationDate))
       ? moment().diff(moment(creationDate), "years")
       : null;
   const remainingDays =
-    expirationDate !== "Unknown" && Number.isFinite(Date.parse(expirationDate))
+    isDomain &&
+    expirationDate !== "Unknown" &&
+    Number.isFinite(Date.parse(expirationDate))
       ? Math.max(0, moment(expirationDate).diff(moment(), "days"))
       : null;
 
@@ -195,14 +215,23 @@ export function parseRdapToWhoisResult(
     expirationDate,
     status,
     nameServers,
-    registrantOrganization: entityData.registrantOrganization,
+    registrantOrganization:
+      registrant?.organization ||
+      registrant?.name ||
+      entityData.registrantOrganization,
     registrantProvince: entityData.registrantProvince,
-    registrantCountry: entityData.registrantCountry,
+    registrantCountry:
+      nullableText(rdapData.country) ||
+      registrant?.country ||
+      entityData.registrantCountry,
     registrantPhone: entityData.registrantPhone,
     registrantEmail: entityData.registrantEmail,
-    dnssec: rdapData.secureDNS?.delegationSigned
-      ? "signedDelegation"
-      : "unsigned",
+    dnssec:
+      isDomain && typeof rdapData.secureDNS?.delegationSigned === "boolean"
+        ? rdapData.secureDNS.delegationSigned
+          ? "signedDelegation"
+          : "unsigned"
+        : "",
     rawWhoisContent: "",
     rawRdapContent: JSON.stringify(rdapData, null, 2),
     domainAge,
@@ -213,10 +242,27 @@ export function parseRdapToWhoisResult(
     mozDomainAuthority: 0,
     mozPageAuthority: 0,
     mozSpamScore: 0,
-    cidr:
-      rdapData.startAddress && rdapData.endAddress
-        ? `${rdapData.startAddress}-${rdapData.endAddress}`
-        : "Unknown",
+    cidr: cidrs.join(", ") || "Unknown",
+    cidrs,
+    startAddress: nullableText(rdapData.startAddress),
+    endAddress: nullableText(rdapData.endAddress),
+    contacts,
+    handle: nullableText(rdapData.handle),
+    asNumber:
+      Number.isInteger(rdapData.startAutnum) &&
+      rdapData.startAutnum === rdapData.endAutnum
+        ? rdapData.startAutnum
+        : null,
+    asName:
+      rdapData.startAutnum !== undefined ? nullableText(rdapData.name) : null,
+    description,
+    mentionedASNs: Array.from(
+      new Set(
+        description
+          .flatMap((line) => line.match(/\bAS\d+\b/gi) || [])
+          .map((asn) => asn.toUpperCase()),
+      ),
+    ),
     inetNum: rdapData.startAddress || "Unknown",
     inet6Num:
       rdapData.ipVersion === "v6"

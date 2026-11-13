@@ -29,6 +29,7 @@ export async function getMozMetrics(domain: string): Promise<MozMetrics> {
 
     // Get Domain Authority
     const daResponse = await fetch(`${MOZ_API_URL}/url_metrics`, {
+      signal: AbortSignal.timeout(5000),
       method: "POST",
       headers: {
         Authorization: authToken,
@@ -48,16 +49,25 @@ export async function getMozMetrics(domain: string): Promise<MozMetrics> {
     const metrics = data.results[0];
 
     return {
-      domainAuthority: Math.round(metrics.domain_authority || 0),
-      pageAuthority: Math.round(metrics.page_authority || 0),
-      spamScore: Math.round(metrics.spam_score || 0),
+      domainAuthority:
+        typeof metrics.domain_authority === "number"
+          ? Math.round(metrics.domain_authority)
+          : -1,
+      pageAuthority:
+        typeof metrics.page_authority === "number"
+          ? Math.round(metrics.page_authority)
+          : -1,
+      spamScore:
+        typeof metrics.spam_score === "number"
+          ? Math.round(metrics.spam_score)
+          : -1,
     };
   } catch (error) {
     console.error("Error fetching Moz metrics:", error);
     return {
-      domainAuthority: 0,
-      pageAuthority: 0,
-      spamScore: 0,
+      domainAuthority: -1,
+      pageAuthority: -1,
+      spamScore: -1,
     };
   }
 }

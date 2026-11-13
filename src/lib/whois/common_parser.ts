@@ -8,6 +8,8 @@ import moment from "moment";
 import { getMozMetrics } from "@/lib/moz/client";
 import { getDomainPricing } from "@/lib/pricing/client";
 import { supplementRegistrarExpiration } from "./registrar_rdap";
+import { parseCidr, rangeToCidrs } from "./address";
+import { isoDate } from "./registration";
 
 function analyzeDomainStatus(status: string): DomainStatusProps {
   const segments = status.split(" ");
@@ -24,8 +26,7 @@ function analyzeTime(time: string): string {
   if (!time || time.length === 0) return time;
 
   try {
-    const date = new Date(time.replace("<", "").replace(">", "").trim());
-    return date.toISOString();
+    return isoDate(time.replace("<", "").replace(">", "").trim()) || time;
   } catch (e) {
     return time;
   }
@@ -51,22 +52,23 @@ function calculateRemainingDays(expirationDate: string): number {
 
 export async function applyParams(result: WhoisAnalyzeResult) {
   // Calculate domain age and remaining days
-  result.domainAge =
-    !result.creationDate || result.creationDate === "Unknown"
-      ? null
-      : calculateDomainAge(result.creationDate);
-  result.remainingDays =
-    !result.expirationDate || result.expirationDate === "Unknown"
-      ? null
-      : calculateRemainingDays(result.expirationDate);
+  result.domainAge = !isoDate(result.creationDate)
+    ? null
+    : calculateDomainAge(result.creationDate);
+  result.remainingDays = !isoDate(result.expirationDate)
+    ? null
+    : calculateRemainingDays(result.expirationDate);
 
   // Get pricing information
-  result.registerPrice = await getDomainPricing(result.domain, "register");
-  result.renewPrice = await getDomainPricing(result.domain, "renew");
-  result.transferPrice = await getDomainPricing(result.domain, "transfer");
-
-  // Get Moz metrics
-  const mozMetrics = await getMozMetrics(result.domain);
+  const [register, renew, transfer, mozMetrics] = await Promise.all([
+    getDomainPricing(result.domain, "register"),
+    getDomainPricing(result.domain, "renew"),
+    getDomainPricing(result.domain, "transfer"),
+    getMozMetrics(result.domain),
+  ]);
+  result.registerPrice = register;
+  result.renewPrice = renew;
+  result.transferPrice = transfer;
   result.mozDomainAuthority = mozMetrics.domainAuthority;
   result.mozPageAuthority = mozMetrics.pageAuthority;
   result.mozSpamScore = mozMetrics.spamScore;
@@ -135,6 +137,7 @@ export async function analyzeWhois(
         result.updatedDate = analyzeTime(value);
         break;
       case "creation date":
+      case "regdate":
         result.creationDate = analyzeTime(value);
         break;
       case "domain name commencement date":
@@ -177,6 +180,7 @@ export async function analyzeWhois(
         result.registrantOrganization = value;
         break;
       case "org-name":
+      case "orgname":
         result.registrantOrganization = value;
         break;
       case "registrant":
@@ -250,6 +254,16 @@ export async function analyzeWhois(
       case "origin":
         result.originAS = value;
         break;
+      case "aut-num":
+      case "asnumber":
+        result.asNumber = /^(?:AS)?\d+$/i.test(value)
+          ? Number(value.replace(/^as/i, ""))
+          : null;
+        break;
+      case "as-name":
+      case "asname":
+        result.asName = value;
+        break;
     }
 
     if (includeArgs(key, "domain name") && !result.domain) {
@@ -315,6 +329,29 @@ export async function analyzeWhois(
   }
   result.status = newStatus;
 
-  if (query) await supplementRegistrarExpiration(result, query);
-  return await applyParams(result);
+  const range = [result.netRange, result.inetNum, result.inet6Num]
+    .find((value) => value.includes(" - "))
+    ?.split(/\s+-\s+/);
+  result.startAddress = range?.[0] || null;
+  result.endAddress = range?.[1] || null;
+  if (range && result.netRange === "Unknown")
+    result.netRange = `${range[0]} - ${range[1]}`;
+  const cidrs = [result.cidr, result.inetNum, result.inet6Num]
+    .flatMap((value) => value.split(/,\s*/))
+    .map((value) => parseCidr(value.trim())?.cidr)
+    .filter((value): value is string => !!value);
+  result.cidrs = range ? rangeToCidrs(range[0], range[1]) : [...new Set(cidrs)];
+  result.cidr = result.cidrs.join(", ") || "Unknown";
+  if (/^Assigned by /i.test(result.registrantOrganization)) {
+    result.allocationRegistry = result.registrantOrganization.replace(
+      /^Assigned by /i,
+      "",
+    );
+    result.registrantOrganization = "Unknown";
+  }
+  if (query) {
+    await supplementRegistrarExpiration(result, query);
+    return await applyParams(result);
+  }
+  return result;
 }
