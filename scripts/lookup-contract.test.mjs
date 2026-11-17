@@ -93,6 +93,43 @@ test("WHOIS error text and bootstrap errors are not registration records", async
   assert.equal(result.available, undefined);
 });
 
+test("WHOIS policy about throttling does not reject a registered domain", async () => {
+  // Record and policy excerpt from whois.nic.io for cleanip.io (2026-11-17).
+  const whoisText = [
+    "Domain Name: cleanip.io",
+    "Registrar: Cloudflare, Inc",
+    "Creation Date: 2026-02-15T09:17:47Z",
+    "Registry Expiry Date: 2028-02-15T09:17:47Z",
+    "Name Server: nolan.ns.cloudflare.com",
+    "Name Server: treasure.ns.cloudflare.com",
+    "",
+    "Terms of Use: Access to WHOIS information is provided to assist persons in determining the contents of a domain name registration record in the registry database.",
+    "Queries to the Whois services are throttled. If too many queries are received from a single IP address within a specified time, the service will begin to reject further queries for a period of time to prevent disruption of Whois service access.",
+  ].join("\r\n");
+  const client = lookupHarness({ whoisText });
+  const result = await client.lookupWhois("cleanip.io");
+  assert.equal(result.status, true);
+  assert.equal(result.outcome, "ok");
+  assert.equal(result.source, "whois");
+  assert.equal(result.result.expirationDate, "2028-02-15T09:17:47.000Z");
+  assert.equal(result.result.rawWhoisContent, whoisText);
+});
+
+test("WHOIS explicit rate limits remain errors even with a domain header", async () => {
+  for (const notice of [
+    "WHOIS LIMIT EXCEEDED - SEE WWW.PIR.ORG/WHOIS FOR DETAILS",
+    "% Too many queries. Please try again later.",
+    "Error: query limit exceeded",
+  ]) {
+    const result = await lookupHarness({
+      whoisText: `Domain Name: cleanip.io\n${notice}\n\nTerms of Use: Queries are throttled.`,
+    }).lookupWhois("cleanip.io");
+    assert.equal(result.status, false, notice);
+    assert.equal(result.outcome, "rate_limited", notice);
+    assert.equal(result.available, undefined, notice);
+  }
+});
+
 export const networkRecord = {
   objectClassName: "ip network",
   handle: "1.1.1.0 - 1.1.1.255",

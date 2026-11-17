@@ -74,12 +74,18 @@ export function validateRdap(data: any, query: ParsedQuery): void {
 
 export function classifyWhois(text: string, query: ParsedQuery): LookupOutcome {
   if (!text.trim()) return "upstream_error";
+  // Registry policy footers describe throttling even for successful queries.
+  // Keep the original response intact for identity checks and raw output.
+  const diagnosticText = text.split(
+    /^\s*(?:%+\s*)?terms (?:of (?:use|service)|and conditions)\s*:/im,
+    1,
+  )[0];
   const ripeCode = text.match(/^\s*%\s*ERROR:\s*(\d+)\b/im)?.[1];
   if (ripeCode === "101") return "not_found";
   if (ripeCode === "202") return "rate_limited";
   if (
     /(?:rate.?limit|query limit|quota exceeded|too many (?:requests|queries)|maximum.*queries|WHOIS LIMIT EXCEEDED)/i.test(
-      text,
+      diagnosticText,
     )
   )
     return "rate_limited";
